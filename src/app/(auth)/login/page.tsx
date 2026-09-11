@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import type { Metadata } from "next";
 
 import { LoginForm } from "./login-form";
@@ -19,12 +20,15 @@ export default async function LoginPage({
   const notice = reason ? REASONS[reason] : undefined;
 
   return (
-    <div className="animate-fade-in">
-      <h1 className="text-2xl font-semibold tracking-tight text-fg">Iniciar sesión</h1>
-      <p className="mt-1.5 text-sm text-fg-muted">Accede con tu cuenta corporativa para entrar al repositorio.</p>
-      <div className="mt-8">
-        <LoginForm next={next} notice={notice} />
+    <>
+      <div className="mb-4 grid size-11 place-items-center rounded-xl bg-[#eaf1fe] text-[#1d4ed8]" aria-hidden>
+        <Lock className="size-[22px]" />
       </div>
-    </div>
+      <h1 className="mb-1.5 text-[26px] font-extrabold leading-tight tracking-[-0.02em] text-[#0f1b2d]">
+        Bienvenido de nuevo
+      </h1>
+      <p className="mb-[22px] text-sm text-[#6a768b]">Accede con la cuenta que te asignó el administrador.</p>
+      <LoginForm next={next} notice={notice} />
+    </>
   );
 }
