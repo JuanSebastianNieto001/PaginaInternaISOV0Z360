@@ -11,14 +11,20 @@ import { createClient } from "@/lib/supabase/server";
 import { AppError } from "@/lib/utils/errors";
 import {
   createUserSchema,
+  deleteUserSchema,
   setUserActiveSchema,
+  setUserPasswordSchema,
   updateUserSchema,
   type CreateUserInput,
+  type SetUserPasswordInput,
   type UpdateUserInput,
 } from "@/lib/validation/users";
 import type { ActionResult } from "@/types";
 
 import { authorize, fail, ok, runAction, zodFail } from "./helpers";
+
+const ADMIN_REQUIRED =
+  "Esta operación requiere configurar SUPABASE_SERVICE_ROLE_KEY en el servidor.";
 
 function revalidateUsers(id?: string) {
   revalidatePath("/admin/users");
@@ -34,10 +40,38 @@ async function getRoleCode(
   return data?.code ?? null;
 }
 
+/** Carga el perfil objetivo y verifica que el actor pueda administrarlo. */
+async function loadTarget(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  actorIsSuperAdmin: boolean,
+  id: string,
+) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, role_id, is_active, role:roles ( code )")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new AppError("El usuario no existe.", "not_found");
+  const roleCode = (data.role as { code: string } | null)?.code ?? "";
+  if (roleCode === ROLES.SUPER_ADMIN && !actorIsSuperAdmin) {
+    throw new AppError("Solo un SUPER_ADMIN puede administrar cuentas SUPER_ADMIN.", "forbidden");
+  }
+  return { ...data, roleCode };
+}
+
+function mapAuthAdminError(message: string): string {
+  if (/already|registered|exists/i.test(message)) return "Ya existe un usuario con ese email.";
+  if (/password/i.test(message)) return "La contraseña no cumple los requisitos.";
+  return "No se pudo completar la operación en el servicio de autenticación.";
+}
+
 /* ----------------------------------------------------------------------------
- * Crear usuario (Supabase Auth Admin API, solo servidor)
+ * Crear usuario
  * ------------------------------------------------------------------------- */
-export async function createUser(input: CreateUserInput): Promise<ActionResult<{ id: string; invited: boolean }>> {
+export async function createUser(
+  input: CreateUserInput,
+): Promise<ActionResult<{ id: string; invited: boolean }>> {
   return runAction(async () => {
     const actor = await authorize(PERMISSIONS.USERS_MANAGE);
     const parsed = createUserSchema.safeParse(input);
@@ -52,21 +86,18 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult<{
     }
 
     const admin = createAdminClient();
-    if (!admin) {
-      return fail(
-        "La creación de usuarios requiere configurar SUPABASE_SERVICE_ROLE_KEY en el servidor.",
-      );
-    }
+    if (!admin) return fail(ADMIN_REQUIRED);
 
-    const usePassword = Boolean(d.password && d.password.length > 0);
+    const invite = d.mode === "invite";
+    const requireChange = !invite && d.requirePasswordChange;
     let userId: string | undefined;
 
-    if (usePassword) {
+    if (!invite) {
       const { data, error } = await admin.auth.admin.createUser({
         email: d.email,
         password: d.password as string,
         email_confirm: true,
-        app_metadata: { role_code: roleCode },
+        app_metadata: { role_code: roleCode, must_change_password: requireChange },
         user_metadata: { full_name: d.fullName },
       });
       if (error) throw new AppError(mapAuthAdminError(error.message), "conflict");
@@ -78,7 +109,6 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult<{
       });
       if (error) throw new AppError(mapAuthAdminError(error.message), "conflict");
       userId = data.user?.id;
-      // inviteUserByEmail no admite app_metadata: fijarla después.
       if (userId) {
         await admin.auth.admin.updateUserById(userId, { app_metadata: { role_code: roleCode } });
       }
@@ -86,11 +116,10 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult<{
 
     if (!userId) return fail("No se pudo crear el usuario.");
 
-    // El trigger handle_new_user crea el perfil con VISUALIZADOR por defecto si
-    // app_metadata aún no estaba disponible: aseguramos rol y nombre.
+    // Garantiza rol, nombre y marca aunque el trigger no haya visto app_metadata.
     const { error: profileError } = await admin
       .from("profiles")
-      .update({ role_id: d.roleId, full_name: d.fullName })
+      .update({ role_id: d.roleId, full_name: d.fullName, must_change_password: requireChange })
       .eq("id", userId);
     if (profileError) throw profileError;
 
@@ -98,18 +127,18 @@ export async function createUser(input: CreateUserInput): Promise<ActionResult<{
       p_action: AUDIT_ACTIONS.USER_CREATED,
       p_entity_type: "user",
       p_entity_id: userId,
-      p_metadata: { email: d.email, full_name: d.fullName, role: roleCode, invited: !usePassword },
+      p_metadata: {
+        email: d.email,
+        full_name: d.fullName,
+        role: roleCode,
+        invited: invite,
+        require_password_change: requireChange,
+      },
     });
 
     revalidateUsers();
-    return ok({ id: userId, invited: !usePassword });
+    return ok({ id: userId, invited: invite });
   });
-}
-
-function mapAuthAdminError(message: string): string {
-  if (/already|registered|exists/i.test(message)) return "Ya existe un usuario con ese email.";
-  if (/password/i.test(message)) return "La contraseña no cumple los requisitos.";
-  return "No se pudo crear el usuario en el servicio de autenticación.";
 }
 
 /* ----------------------------------------------------------------------------
@@ -123,24 +152,13 @@ export async function updateUser(input: UpdateUserInput): Promise<ActionResult<{
     const d = parsed.data;
 
     const supabase = await createClient();
+    const target = await loadTarget(supabase, isSuperAdmin(actor), d.id);
 
-    const { data: target, error: fetchError } = await supabase
-      .from("profiles")
-      .select("id, role_id, role:roles ( code )")
-      .eq("id", d.id)
-      .maybeSingle();
-    if (fetchError) throw fetchError;
-    if (!target) return fail("El usuario no existe.");
-
-    const targetRoleCode = (target.role as { code: string } | null)?.code;
     const newRoleCode = await getRoleCode(supabase, d.roleId);
     if (!newRoleCode) return fail("El rol seleccionado no existe.");
-
-    if (d.id === actor.id && d.roleId !== target.role_id) {
-      return fail("No puedes cambiar tu propio rol.");
-    }
-    if ((targetRoleCode === ROLES.SUPER_ADMIN || newRoleCode === ROLES.SUPER_ADMIN) && !isSuperAdmin(actor)) {
-      return fail("Solo un SUPER_ADMIN puede administrar cuentas SUPER_ADMIN.");
+    if (d.id === actor.id && d.roleId !== target.role_id) return fail("No puedes cambiar tu propio rol.");
+    if (newRoleCode === ROLES.SUPER_ADMIN && !isSuperAdmin(actor)) {
+      return fail("Solo un SUPER_ADMIN puede asignar el rol SUPER_ADMIN.");
     }
 
     const { error } = await supabase
@@ -157,7 +175,10 @@ export async function updateUser(input: UpdateUserInput): Promise<ActionResult<{
 /* ----------------------------------------------------------------------------
  * Activar / desactivar
  * ------------------------------------------------------------------------- */
-export async function setUserActive(input: { id: string; isActive: boolean }): Promise<ActionResult<{ isActive: boolean }>> {
+export async function setUserActive(input: {
+  id: string;
+  isActive: boolean;
+}): Promise<ActionResult<{ isActive: boolean }>> {
   return runAction(async () => {
     const actor = await authorize(PERMISSIONS.USERS_MANAGE);
     const parsed = setUserActiveSchema.safeParse(input);
@@ -167,10 +188,101 @@ export async function setUserActive(input: { id: string; isActive: boolean }): P
     if (d.id === actor.id) return fail("No puedes cambiar el estado de tu propia cuenta.");
 
     const supabase = await createClient();
+    await loadTarget(supabase, isSuperAdmin(actor), d.id);
+
     const { error } = await supabase.from("profiles").update({ is_active: d.isActive }).eq("id", d.id);
     if (error) throw error;
 
     revalidateUsers(d.id);
     return ok({ isActive: d.isActive });
+  });
+}
+
+/* ----------------------------------------------------------------------------
+ * Restablecer contraseña (asignada por el administrador)
+ * ------------------------------------------------------------------------- */
+export async function setUserPassword(
+  input: SetUserPasswordInput,
+): Promise<ActionResult<{ id: string; requirePasswordChange: boolean }>> {
+  return runAction(async () => {
+    const actor = await authorize(PERMISSIONS.USERS_MANAGE);
+    const parsed = setUserPasswordSchema.safeParse(input);
+    if (!parsed.success) return zodFail(parsed.error);
+    const d = parsed.data;
+
+    const supabase = await createClient();
+    const target = await loadTarget(supabase, isSuperAdmin(actor), d.id);
+
+    const admin = createAdminClient();
+    if (!admin) return fail(ADMIN_REQUIRED);
+
+    // Si el actor se cambia su propia contraseña, no debe quedar bloqueado.
+    const requireChange = d.id === actor.id ? false : d.requirePasswordChange;
+
+    const { error } = await admin.auth.admin.updateUserById(d.id, {
+      password: d.password,
+      app_metadata: { must_change_password: requireChange },
+    });
+    if (error) throw new AppError(mapAuthAdminError(error.message), "conflict");
+
+    const { error: flagError } = await admin
+      .from("profiles")
+      .update({ must_change_password: requireChange })
+      .eq("id", d.id);
+    if (flagError) throw flagError;
+
+    await supabase.rpc("log_audit", {
+      p_action: AUDIT_ACTIONS.USER_PASSWORD_RESET,
+      p_entity_type: "user",
+      p_entity_id: d.id,
+      p_metadata: { email: target.email, full_name: target.full_name, require_password_change: requireChange },
+    });
+
+    revalidateUsers(d.id);
+    return ok({ id: d.id, requirePasswordChange: requireChange });
+  });
+}
+
+/* ----------------------------------------------------------------------------
+ * Eliminar usuario (Auth + perfil). Los documentos que creó se conservan con
+ * autor "Usuario eliminado"; la auditoría conserva sus registros.
+ * ------------------------------------------------------------------------- */
+export async function deleteUser(input: { id: string }): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const actor = await authorize(PERMISSIONS.USERS_MANAGE);
+    const parsed = deleteUserSchema.safeParse(input);
+    if (!parsed.success) return zodFail(parsed.error);
+    const d = parsed.data;
+
+    if (d.id === actor.id) return fail("No puedes eliminar tu propia cuenta.");
+
+    const supabase = await createClient();
+    const target = await loadTarget(supabase, isSuperAdmin(actor), d.id);
+
+    if (target.roleCode === ROLES.SUPER_ADMIN) {
+      const { count } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role_id", target.role_id)
+        .eq("is_active", true);
+      if ((count ?? 0) <= 1) return fail("No se puede eliminar el único SUPER_ADMIN activo.");
+    }
+
+    const admin = createAdminClient();
+    if (!admin) return fail(ADMIN_REQUIRED);
+
+    // Registrar antes de borrar para conservar email/nombre en el metadato.
+    await supabase.rpc("log_audit", {
+      p_action: AUDIT_ACTIONS.USER_DELETED,
+      p_entity_type: "user",
+      p_entity_id: d.id,
+      p_metadata: { email: target.email, full_name: target.full_name, role: target.roleCode },
+    });
+
+    const { error } = await admin.auth.admin.deleteUser(d.id);
+    if (error) throw new AppError("No se pudo eliminar el usuario en el servicio de autenticación.", "unknown");
+
+    revalidateUsers();
+    return ok({ id: d.id });
   });
 }

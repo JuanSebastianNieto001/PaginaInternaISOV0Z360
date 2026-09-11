@@ -48,6 +48,7 @@ export interface CurrentUser {
   fullName: string;
   avatarUrl: string | null;
   isActive: boolean;
+  mustChangePassword: boolean;
   role: Pick<Role, "id" | "code" | "name" | "level">;
   permissions: PermissionCode[];
 }

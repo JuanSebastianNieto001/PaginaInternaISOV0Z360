@@ -109,6 +109,14 @@ Reglas adicionales aplicadas por trigger (`protect_profile_fields`):
 - Nadie cambia su propio rol ni se desactiva a sí mismo.
 - Solo SUPER_ADMIN puede asignar o retirar SUPER_ADMIN, o editar a un SUPER_ADMIN.
 - Un usuario solo edita su nombre/avatar; rol y estado requieren `users.manage`.
+- La marca `must_change_password` solo la modifica el servidor (service role); un usuario no puede quitársela.
+
+### Gestión de usuarios (`/admin/users`, también en la barra lateral como "Usuarios")
+
+- **Crear** con contraseña asignada (generada o manual) o por **invitación** por email.
+- Casilla **"Solicitar cambio de contraseña"**: al iniciar sesión, el usuario es llevado a `/change-password` y no puede usar la aplicación hasta definir una contraseña nueva.
+- **Editar** nombre y rol, **activar/desactivar**, **restablecer contraseña** (con opción de exigir cambio) y **eliminar** (los documentos que creó se conservan; la auditoría también). No se puede eliminar al único SUPER_ADMIN activo.
+- Crear, eliminar y restablecer contraseñas requieren `SUPABASE_SERVICE_ROLE_KEY` en el servidor.
 
 ## 6. Seguridad
 
@@ -169,16 +177,17 @@ supabase/migrations/001_initial_schema.sql   # extensiones, tablas, índices, tr
 supabase/migrations/002_rls.sql              # políticas Row Level Security
 supabase/migrations/003_storage.sql          # bucket privado `documents` + políticas
 supabase/migrations/004_seed.sql             # roles, permisos, normas, categorías, tipos, etiquetas, ajustes
+supabase/migrations/005_force_password_change.sql  # cambio de contraseña obligatorio
 ```
 
 Todas son idempotentes (`if not exists`, `on conflict`), pueden volver a ejecutarse.
 
-Opción B — **Supabase CLI**:
+Opción B — **Management API** (sin CLI ni psql), con `SUPABASE_PROJECT_REF` y un `SUPABASE_ACCESS_TOKEN` personal en `.env.local`:
 
 ```bash
-npx supabase login
-npx supabase link --project-ref <ref>
-npx supabase db push
+npm run db:migrate                 # aplica todas en orden
+npm run db:migrate -- 005          # solo las que empiezan por 005
+npm run auth:configure -- https://tu-app.vercel.app   # Site URL, redirects y signup deshabilitado
 ```
 
 ### 9.3 Storage

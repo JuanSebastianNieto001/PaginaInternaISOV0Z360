@@ -14,6 +14,7 @@ interface ProfileWithRole {
   full_name: string;
   avatar_url: string | null;
   is_active: boolean;
+  must_change_password: boolean;
   role: {
     id: string;
     code: string;
@@ -40,7 +41,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      `id, email, full_name, avatar_url, is_active,
+      `id, email, full_name, avatar_url, is_active, must_change_password,
        role:roles ( id, code, name, level,
          role_permissions ( permission:permissions ( code ) )
        )`,
@@ -60,6 +61,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
     isActive: profile.is_active,
+    mustChangePassword: profile.must_change_password,
     role: {
       id: profile.role.id,
       code: profile.role.code,
@@ -86,6 +88,8 @@ export async function requireUser(): Promise<CurrentUser> {
     redirect("/login?reason=session");
   }
   if (!user.isActive) redirect("/account-disabled");
+  // Contraseña temporal: bloquear la app hasta que la cambie.
+  if (user.mustChangePassword) redirect("/change-password");
   return user;
 }
 

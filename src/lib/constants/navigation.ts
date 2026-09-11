@@ -41,10 +41,17 @@ export const MAIN_NAV: NavItem[] = [
 
 export const SYSTEM_NAV: NavItem[] = [
   {
+    href: "/admin/users",
+    label: "Usuarios",
+    icon: Users,
+    anyPermission: [PERMISSIONS.USERS_MANAGE],
+  },
+  {
     href: "/admin",
     label: "Administración",
     icon: ShieldCheck,
     anyPermission: ADMIN_AREA_PERMISSIONS,
+    exact: true,
   },
   { href: "/settings", label: "Configuración", icon: Settings },
 ];

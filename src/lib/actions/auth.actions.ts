@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { AUDIT_ACTIONS } from "@/lib/constants/audit";
 import { publicEnv } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { forgotPasswordSchema, loginSchema, resetPasswordSchema } from "@/lib/validation/auth";
 
@@ -44,7 +45,7 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
   // Comprobación de perfil activo (RLS permite leer el propio perfil).
   const { data: profile } = await supabase
     .from("profiles")
-    .select("is_active")
+    .select("is_active, must_change_password")
     .eq("id", data.user.id)
     .maybeSingle();
 
@@ -68,7 +69,62 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
     }),
   ]);
 
+  if (profile.must_change_password) redirect("/change-password");
+
   redirect(safeNextPath(parsed.data.next));
+}
+
+/**
+ * Cambio de contraseña obligatorio (contraseña temporal asignada por un
+ * administrador). Actualiza la contraseña y retira la marca en el servidor
+ * mediante service_role; el usuario no puede retirarla por sí mismo.
+ */
+export async function completeForcedPasswordChange(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = resetPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Revisa los datos introducidos." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Tu sesión ha expirado. Inicia sesión de nuevo." };
+
+  const admin = createAdminClient();
+  if (!admin) {
+    return { error: "El servidor no tiene configurada SUPABASE_SERVICE_ROLE_KEY. Contacta con el administrador." };
+  }
+
+  const { error: pwdError } = await admin.auth.admin.updateUserById(user.id, { password: parsed.data.password });
+  if (pwdError) {
+    return {
+      error: /different|same/i.test(pwdError.message)
+        ? "La nueva contraseña debe ser distinta de la temporal."
+        : "No se pudo actualizar la contraseña. Inténtalo de nuevo.",
+    };
+  }
+
+  const { error: flagError } = await admin
+    .from("profiles")
+    .update({ must_change_password: false })
+    .eq("id", user.id);
+  if (flagError) return { error: "La contraseña se cambió pero no se pudo actualizar tu perfil. Vuelve a iniciar sesión." };
+
+  await supabase.rpc("log_audit", {
+    p_action: AUDIT_ACTIONS.AUTH_PASSWORD_RESET,
+    p_entity_type: "auth",
+    p_entity_id: user.id,
+    p_metadata: { forced: true },
+  });
+
+  redirect("/dashboard?notice=password_updated");
 }
 
 export async function signOut(): Promise<void> {

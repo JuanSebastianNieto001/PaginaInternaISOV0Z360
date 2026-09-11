@@ -124,6 +124,7 @@ export type Database = {
           avatar_url: string | null;
           role_id: string;
           is_active: boolean;
+          must_change_password: boolean;
           last_sign_in_at: string | null;
         } & Timestamps;
         Insert: {
@@ -133,6 +134,7 @@ export type Database = {
           avatar_url?: string | null;
           role_id: string;
           is_active?: boolean;
+          must_change_password?: boolean;
           last_sign_in_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -144,6 +146,7 @@ export type Database = {
           avatar_url?: string | null;
           role_id?: string;
           is_active?: boolean;
+          must_change_password?: boolean;
           last_sign_in_at?: string | null;
           created_at?: string;
           updated_at?: string;
