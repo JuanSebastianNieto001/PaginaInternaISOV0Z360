@@ -13,22 +13,35 @@
 .light-scope {
   color-scheme: light;
 
-  --bg: oklch(98.2% 0.003 250);
-  --surface: oklch(100% 0 0);
-  --surface-2: oklch(96.8% 0.004 250);
-  --surface-3: oklch(94.5% 0.006 250);
-  --border: oklch(90.5% 0.008 250);
-  --border-strong: oklch(84% 0.01 250);
+  /* Escala de marca. Constante en ambos temas: es la identidad visual
+   * (azules VOZ360) que comparten acceso, shell y dashboard. */
+  --brand-100: #eaf1fe;
+  --brand-200: #d4e2fc;
+  --brand-300: #b3cbf9;
+  --brand-400: #7ea6f2;
+  --brand-500: #3b7be6;
+  --brand-600: #1d4ed8;
+  --brand-700: #173db0;
+  --brand-800: #132f85;
+  --brand-900: #0f2159;
+  --brand-mute: #b6c0d0;
 
-  --fg: oklch(22% 0.02 260);
-  --fg-muted: oklch(48% 0.02 260);
-  --fg-subtle: oklch(62% 0.015 260);
-  --fg-inverted: oklch(99% 0 0);
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f4f7fb;
+  --surface-3: #eaeef5;
+  --border: #eaeef5;
+  --border-strong: #d6dde8;
 
-  --primary: oklch(45% 0.16 262);
-  --primary-hover: oklch(40% 0.16 262);
-  --primary-soft: oklch(94% 0.04 262);
-  --primary-fg: oklch(99% 0 0);
+  --fg: #0f1b2d;
+  --fg-muted: #4d5869;
+  --fg-subtle: #6a768b;
+  --fg-inverted: #ffffff;
+
+  --primary: #1d4ed8;
+  --primary-hover: #173db0;
+  --primary-soft: #eaf1fe;
+  --primary-fg: #ffffff;
 
   --accent: oklch(60% 0.14 200);
 
@@ -41,8 +54,9 @@
   --info: oklch(58% 0.14 240);
   --info-soft: oklch(94% 0.04 240);
 
-  --ring: oklch(60% 0.16 262 / 0.5);
-  --shadow-color: 220 20% 20%;
+  --ring: rgb(29 78 216 / 0.55);
+  /* Separador fuerte del shell (sidebar y topbar). */
+  --divider: rgb(15 27 45 / 0.22);
 
   --radius: 0.625rem;
 }
@@ -62,10 +76,10 @@
   --fg-subtle: oklch(56% 0.012 260);
   --fg-inverted: oklch(15% 0 0);
 
-  --primary: oklch(70% 0.14 262);
-  --primary-hover: oklch(76% 0.13 262);
-  --primary-soft: oklch(30% 0.07 262);
-  --primary-fg: oklch(15% 0.02 262);
+  --primary: #4f8bff;
+  --primary-hover: #7ea6f2;
+  --primary-soft: #132f85;
+  --primary-fg: #0b1220;
 
   --accent: oklch(72% 0.12 200);
 
@@ -78,8 +92,8 @@
   --info: oklch(72% 0.13 240);
   --info-soft: oklch(30% 0.06 240);
 
-  --ring: oklch(70% 0.14 262 / 0.55);
-  --shadow-color: 220 30% 2%;
+  --ring: rgb(126 166 242 / 0.6);
+  --divider: rgb(232 238 248 / 0.24);
 }
 
 @theme inline {
@@ -111,18 +125,31 @@
   --color-info-soft: var(--info-soft);
 
   --color-ring: var(--ring);
+  --color-divider: var(--divider);
+
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-mute: var(--brand-mute);
 
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 0.25rem);
   --radius-xl: calc(var(--radius) + 0.5rem);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Archivo se carga con next/font en el layout raíz y da nombre a --font-archivo. */
+  --font-sans: var(--font-archivo), "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* Fuente de marca del acceso (Archivo, cargada con next/font en el layout de (auth)). */
-  --font-brand: var(--font-archivo), "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-sans);
 
-  --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 1px 3px hsl(var(--shadow-color) / 0.04);
-  --shadow-pop: 0 4px 16px hsl(var(--shadow-color) / 0.12), 0 1px 3px hsl(var(--shadow-color) / 0.08);
+  --shadow-card: 0 1px 2px rgb(45 43 43 / 0.14);
+  --shadow-pop: 0 3px 10px rgb(45 43 43 / 0.16);
+  --shadow-float: 0 12px 32px rgb(45 43 43 / 0.22);
 }
 
 /* ---------------------------------------------------------------------------
@@ -137,7 +164,6 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }

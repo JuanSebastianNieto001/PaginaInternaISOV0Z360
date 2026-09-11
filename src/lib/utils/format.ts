@@ -56,3 +56,32 @@ export function truncate(text: string | null | undefined, max = 80): string {
   if (!text) return "";
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
+
+/**
+ * Zona horaria de la organización. El saludo y la fecha del dashboard se
+ * calculan en el servidor, así que deben fijarse a la zona de la empresa y no
+ * a la del servidor (UTC en producción).
+ */
+export const ORG_TIME_ZONE = "America/Bogota";
+
+/** "jueves, 11 de septiembre" */
+export function longDateLabel(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: ORG_TIME_ZONE,
+  }).format(date);
+}
+
+/** Saludo según la hora local de la organización. */
+export function greeting(date: Date = new Date()): string {
+  const hour = Number.parseInt(
+    new Intl.DateTimeFormat("es-CO", { hour: "2-digit", hourCycle: "h23", timeZone: ORG_TIME_ZONE }).format(date),
+    10,
+  );
+  if (!Number.isFinite(hour)) return "Hola";
+  if (hour < 12) return "Buenos días";
+  if (hour < 19) return "Buenas tardes";
+  return "Buenas noches";
+}

@@ -1,27 +1,34 @@
 import { DOCUMENT_STATUS_LABELS } from "@/lib/constants/documents";
+import { cn } from "@/lib/utils/cn";
 import type { DocumentStatus } from "@/types";
 
-import { Badge, type BadgeTone } from "../ui/badge";
-
-const TONES: Record<DocumentStatus, BadgeTone> = {
-  draft: "neutral",
-  review: "warning",
-  approved: "success",
-  obsolete: "danger",
+/** Píldoras de estado del sistema de diseño (azul marino → aprobado). */
+const STYLES: Record<DocumentStatus, string> = {
+  approved: "bg-brand-900 text-white border-transparent",
+  review: "bg-brand-100 text-brand-800 border-transparent",
+  draft: "bg-surface-3 text-[#33405a] border-transparent dark:text-fg",
+  obsolete: "bg-transparent text-fg-subtle border-border-strong",
 };
 
-const DOTS: Record<DocumentStatus, string> = {
-  draft: "bg-fg-subtle",
-  review: "bg-warning",
-  approved: "bg-success",
-  obsolete: "bg-danger",
-};
-
-export function StatusBadge({ status, size = "md" }: { status: DocumentStatus; size?: "sm" | "md" }) {
+export function StatusBadge({
+  status,
+  size = "md",
+  className,
+}: {
+  status: DocumentStatus;
+  size?: "sm" | "md";
+  className?: string;
+}) {
   return (
-    <Badge tone={TONES[status]} size={size}>
-      <span className={`size-1.5 rounded-full ${DOTS[status]}`} aria-hidden />
+    <span
+      className={cn(
+        "inline-flex items-center whitespace-nowrap rounded-full border font-semibold leading-none",
+        size === "sm" ? "px-2 py-[3px] text-[10px]" : "px-2.5 py-[4px] text-[11px]",
+        STYLES[status],
+        className,
+      )}
+    >
       {DOCUMENT_STATUS_LABELS[status]}
-    </Badge>
+    </span>
   );
 }

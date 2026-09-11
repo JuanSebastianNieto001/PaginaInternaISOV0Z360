@@ -72,3 +72,15 @@ export function isNavActive(pathname: string, item: Pick<NavItem, "href" | "exac
   if (item.exact) return pathname === item.href;
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
+
+/** Etiqueta de la sección actual (migas de pan de la barra superior). */
+export function findNavLabel(pathname: string, fallback = "Inicio"): string {
+  const candidates = [...ADMIN_NAV, ...SYSTEM_NAV, ...MAIN_NAV].filter(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
+  const best = candidates.reduce<NavItem | null>(
+    (acc, item) => (acc && acc.href.length >= item.href.length ? acc : item),
+    null,
+  );
+  return best?.label ?? fallback;
+}

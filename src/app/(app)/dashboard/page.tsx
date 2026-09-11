@@ -1,98 +1,158 @@
-import { ArrowRight, CheckCircle2, CircleDashed, Clock3, FileText, Plus, Search, Trash2 } from "lucide-react";
+import { FileText, Plus, Search } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ActivityTimeline } from "@/components/documents/activity-timeline";
-import { FileIcon } from "@/components/documents/file-icon";
+import { ActivityList } from "@/components/dashboard/activity-list";
+import { StandardsBoard, type StandardCardData } from "@/components/dashboard/standards-board";
+import { FileExtBox } from "@/components/documents/file-ext-box";
 import { StatusBadge } from "@/components/documents/status-badge";
-import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { FormSuccess } from "@/components/ui/field";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState, ErrorState } from "@/components/ui/states";
+import { ErrorState } from "@/components/ui/states";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { getRecentActivity } from "@/lib/services/audit.service";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
-import { getRecentlyAdded, getRecentlyModified } from "@/lib/services/documents.service";
+import { getRecentlyAdded } from "@/lib/services/documents.service";
+import { listStandards } from "@/lib/services/taxonomy.service";
 import { createClient } from "@/lib/supabase/server";
-import { formatNumber, formatRelative } from "@/lib/utils/format";
-import type { DocumentListItem } from "@/types";
+import { cn } from "@/lib/utils/cn";
+import { formatNumber, formatRelative, greeting, longDateLabel } from "@/lib/utils/format";
+import type { AuditLogItem, DashboardStats, DocumentListItem, Standard } from "@/types";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-function StatTile({
-  label,
-  value,
-  icon: Icon,
-  href,
-  tone = "neutral",
-  hint,
-}: {
-  label: string;
-  value: number;
-  icon: React.ComponentType<{ className?: string }>;
-  href: string;
-  tone?: "neutral" | "success" | "warning" | "danger" | "primary";
-  hint?: string;
-}) {
-  const tones = {
-    neutral: "bg-surface-2 text-fg-muted",
-    primary: "bg-primary-soft text-primary",
-    success: "bg-success-soft text-success",
-    warning: "bg-warning-soft text-warning",
-    danger: "bg-danger-soft text-danger",
-  };
+/* ----------------------------------------------------------------------------
+ * Indicadores
+ * ------------------------------------------------------------------------- */
+const STAT_CELLS = [
+  { key: "approved", label: "Aprobados", href: "/documents?status=approved", dot: "bg-brand-900", bar: "bg-brand-900" },
+  { key: "review", label: "En revisión", href: "/documents?status=review", dot: "bg-brand-600", bar: "bg-brand-600" },
+  { key: "draft", label: "Pendientes", href: "/documents?status=draft", dot: "bg-brand-400", bar: "bg-brand-400" },
+  { key: "obsolete", label: "Obsoletos", href: "/documents?status=obsolete", dot: "bg-brand-mute", bar: "bg-brand-mute" },
+] as const;
+
+function StatsCard({ stats }: { stats: DashboardStats }) {
+  const percent = (value: number) => (stats.total > 0 ? Math.round((value / stats.total) * 100) : 0);
+
   return (
-    <Link href={href} className="group rounded-xl border border-border bg-surface p-4 shadow-card transition-colors hover:border-border-strong">
-      <div className="flex items-center justify-between">
-        <span className={`flex size-9 items-center justify-center rounded-lg ${tones[tone]}`}>
-          <Icon className="size-4.5" />
-        </span>
-        <ArrowRight className="size-4 text-fg-subtle opacity-0 transition-opacity group-hover:opacity-100" />
+    <section
+      aria-label="Indicadores"
+      className="mb-8 grid grid-cols-2 overflow-hidden rounded-2xl border border-border bg-surface shadow-card min-[900px]:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]"
+    >
+      <div className="col-span-2 bg-surface-2 p-[22px] min-[900px]:col-span-1">
+        <p className="text-[11px] uppercase tracking-[.1em] text-fg-subtle">Total de documentos</p>
+        <p className="my-2 text-[64px] font-extrabold leading-none tracking-[-0.04em] tabular-nums text-brand-900 dark:text-fg">
+          {formatNumber(stats.total)}
+        </p>
+        <p className="text-[13px] text-fg-subtle">
+          <span className="font-semibold text-brand-700 dark:text-primary">
+            +{formatNumber(stats.added_last_30_days)}
+          </span>{" "}
+          añadidos en los últimos 30 días
+        </p>
       </div>
-      <p className="mt-3 text-2xl font-semibold tabular-nums tracking-tight text-fg">{formatNumber(value)}</p>
-      <p className="text-sm text-fg-muted">{label}</p>
-      {hint ? <p className="mt-1 text-xs text-fg-subtle">{hint}</p> : null}
-    </Link>
+
+      {STAT_CELLS.map((cell) => {
+        const value = stats[cell.key];
+        const pct = percent(value);
+        return (
+          <Link
+            key={cell.key}
+            href={cell.href}
+            className="border-t border-border p-[22px] transition-colors hover:bg-surface-2 min-[900px]:border-l min-[900px]:border-t-0"
+          >
+            <span className="flex items-center gap-2 text-[11px] uppercase tracking-[.1em] text-fg-subtle">
+              <span className={cn("size-2 shrink-0 rounded-full", cell.dot)} aria-hidden />
+              {cell.label}
+            </span>
+            <span className="my-3 block text-4xl font-extrabold leading-none tracking-[-0.03em] tabular-nums text-fg">
+              {formatNumber(value)}
+            </span>
+            <span className="block h-1 overflow-hidden rounded-full bg-surface-3">
+              <span className={cn("block h-full rounded-full", cell.bar)} style={{ width: `${pct}%` }} />
+            </span>
+            <span className="mt-1.5 block text-xs text-fg-subtle">{pct}% del repositorio</span>
+          </Link>
+        );
+      })}
+    </section>
   );
 }
 
-function DocRow({ doc, dateField }: { doc: DocumentListItem; dateField: "created_at" | "updated_at" }) {
+/* ----------------------------------------------------------------------------
+ * Listas inferiores
+ * ------------------------------------------------------------------------- */
+function ListCard({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-2xl border border-border bg-surface px-4 py-1.5 shadow-card">{children}</div>;
+}
+
+function SectionHeading({ title, href, linkLabel }: { title: string; href: string; linkLabel: string }) {
   return (
-    <li>
-      <Link href={`/documents/${doc.id}`} className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-2">
-        <FileIcon extension={doc.file_extension} size="sm" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-fg">{doc.name}</p>
-          <p className="truncate text-xs text-fg-subtle">
-            <span className="font-mono">{doc.code}</span>
-            {doc.standard ? ` · ${doc.standard.code}` : ""} · v{doc.version}
-          </p>
-        </div>
-        <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
-          <StatusBadge status={doc.status} size="sm" />
-          <span className="text-[11px] text-fg-subtle">{formatRelative(doc[dateField])}</span>
-        </div>
+    <div className="mb-2.5 flex items-baseline justify-between gap-3">
+      <h2 className="text-lg font-extrabold tracking-[-0.01em] text-fg">{title}</h2>
+      <Link href={href} className="text-[13px] text-brand-700 hover:underline dark:text-primary">
+        {linkLabel} →
       </Link>
-    </li>
+    </div>
   );
 }
 
+function RecentDocuments({ documents }: { documents: DocumentListItem[] }) {
+  if (documents.length === 0) {
+    return <p className="py-6 text-sm text-fg-subtle">Todavía no hay documentos en el repositorio.</p>;
+  }
+
+  return (
+    <ul>
+      {documents.map((doc, index) => (
+        <li key={doc.id}>
+          <Link
+            href={`/documents/${doc.id}`}
+            className={cn(
+              "grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 py-3 transition-colors hover:bg-surface-2",
+              index < documents.length - 1 && "border-b border-border",
+            )}
+          >
+            <FileExtBox extension={doc.file_extension} />
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-fg">{doc.name}</span>
+              <span className="mt-0.5 block truncate text-xs tabular-nums text-fg-subtle">
+                {doc.code}
+                {doc.standard ? ` · ${doc.standard.code}` : ""} · v{doc.version}
+              </span>
+            </span>
+            <span className="flex shrink-0 flex-col items-end gap-1">
+              <StatusBadge status={doc.status} size="sm" />
+              <span className="text-[11px] text-fg-subtle">{formatRelative(doc.created_at)}</span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * Página
+ * ------------------------------------------------------------------------- */
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
   const [user, { notice }] = await Promise.all([requireUser(), searchParams]);
   const supabase = await createClient();
 
-  let stats, added: DocumentListItem[] = [], modified: DocumentListItem[] = [], activity = [] as Awaited<ReturnType<typeof getRecentActivity>>;
+  let stats: DashboardStats | undefined;
+  let standards: Standard[] = [];
+  let added: DocumentListItem[] = [];
+  let activity: AuditLogItem[] = [];
   let failed = false;
+
   try {
-    [stats, added, modified, activity] = await Promise.all([
+    [stats, standards, added, activity] = await Promise.all([
       getDashboardStats(supabase),
+      listStandards(supabase),
       getRecentlyAdded(supabase, 5),
-      getRecentlyModified(supabase, 5),
-      getRecentActivity(supabase, 8),
+      getRecentActivity(supabase, 6),
     ]);
   } catch {
     failed = true;
@@ -101,106 +161,96 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const canCreate = can(user, PERMISSIONS.DOCUMENTS_CREATE);
   const firstName = user.fullName.split(" ")[0] || user.email;
 
+  // Las tarjetas de norma combinan la taxonomía (descripción, orden) con el
+  // recuento del RPC de estadísticas.
+  const statsByStandard = new Map((stats?.by_standard ?? []).map((s) => [s.standard_id, s]));
+  const standardCards: StandardCardData[] = standards.map((standard) => ({
+    id: standard.id,
+    code: standard.code,
+    name: standard.name,
+    description: standard.description,
+    total: statsByStandard.get(standard.id)?.total ?? 0,
+    approved: statsByStandard.get(standard.id)?.approved ?? 0,
+  }));
+
   return (
     <>
-      <PageHeader
-        title={`Hola, ${firstName}`}
-        description="Estado general del repositorio documental y actividad reciente."
-        actions={
-          <>
-            {canCreate ? (
-              <ButtonLink href="/documents/new" leftIcon={<Plus className="size-4" />}>
-                Subir documento
-              </ButtonLink>
-            ) : null}
-            <ButtonLink href="/documents?focus=search" variant="outline" leftIcon={<Search className="size-4" />}>
-              Buscar
-            </ButtonLink>
-            <ButtonLink href="/documents" variant="outline" leftIcon={<FileText className="size-4" />}>
-              Ver repositorio
-            </ButtonLink>
-          </>
-        }
-      />
+      <header className="mb-7 flex flex-wrap items-end justify-between gap-5">
+        <div className="min-w-0">
+          <p className="mb-2 text-[11px] uppercase tracking-[.12em] text-brand-700 dark:text-primary">
+            {longDateLabel()}
+          </p>
+          <h1 className="mb-2 text-[clamp(28px,5vw,36px)] font-extrabold leading-tight tracking-[-0.025em] text-fg">
+            {greeting()}, {firstName}
+          </h1>
+          {stats ? (
+            <p className="max-w-[560px] text-pretty text-[15px] text-fg-subtle">
+              {formatNumber(stats.total)} documentos bajo control.{" "}
+              <strong className="font-semibold text-fg">{formatNumber(stats.review)} en revisión</strong> esperan
+              aprobación y {formatNumber(stats.draft)} borradores siguen sin publicar.
+            </p>
+          ) : null}
+        </div>
 
-      {notice === "password_updated" ? <FormSuccess message="Tu contraseña se ha actualizado correctamente." /> : null}
+        <div className="flex flex-wrap gap-2">
+          {canCreate ? (
+            <ButtonLink
+              href="/documents/new"
+              leftIcon={<Plus className="size-4" strokeWidth={2.4} />}
+              className="h-10 rounded-[10px] bg-[linear-gradient(180deg,var(--brand-500),var(--brand-600))] font-semibold text-white shadow-[0_6px_16px_rgb(29_78_216/0.25)] hover:bg-brand-700 hover:bg-none"
+            >
+              Subir documento
+            </ButtonLink>
+          ) : null}
+          <ButtonLink
+            href="/documents?focus=search"
+            variant="outline"
+            leftIcon={<Search className="size-[15px]" />}
+            className="h-10 rounded-[10px] border-border-strong"
+          >
+            Buscar
+          </ButtonLink>
+          <ButtonLink
+            href="/documents"
+            variant="outline"
+            leftIcon={<FileText className="size-[15px]" />}
+            className="h-10 rounded-[10px] border-border-strong"
+          >
+            Ver repositorio
+          </ButtonLink>
+        </div>
+      </header>
+
+      {notice === "password_updated" ? (
+        <div className="mb-6">
+          <FormSuccess message="Tu contraseña se ha actualizado correctamente." />
+        </div>
+      ) : null}
 
       {failed || !stats ? (
-        <ErrorState className="mt-4" />
+        <ErrorState />
       ) : (
-        <div className="mt-4 space-y-6">
-          <section aria-label="Indicadores" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <StatTile label="Documentos" value={stats.total} icon={FileText} href="/documents" tone="primary" hint={`${formatNumber(stats.added_last_30_days)} nuevos en 30 días`} />
-            <StatTile label="Aprobados" value={stats.approved} icon={CheckCircle2} href="/documents?status=approved" tone="success" />
-            <StatTile label="En revisión" value={stats.review} icon={Clock3} href="/documents?status=review" tone="warning" />
-            <StatTile label="Borradores" value={stats.draft} icon={CircleDashed} href="/documents?status=draft" />
-            <StatTile label="Obsoletos" value={stats.obsolete} icon={Trash2} href="/documents?status=obsolete" tone="danger" />
-          </section>
+        <>
+          {standardCards.length > 0 ? <StandardsBoard standards={standardCards} /> : null}
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <Card className="lg:col-span-1">
-              <CardHeader title="Documentos por norma" description="Distribución del repositorio y porcentaje aprobado." action={<Link href="/standards" className="text-xs font-medium text-primary hover:underline">Ver normas</Link>} />
-              <CardContent className="space-y-4">
-                {stats.by_standard.length === 0 ? (
-                  <EmptyState compact title="Sin normas activas" description="Crea normas en Administración para empezar a clasificar." />
-                ) : (
-                  stats.by_standard.map((s) => {
-                    const pct = stats.total > 0 ? Math.round((s.total / stats.total) * 100) : 0;
-                    const approvedPct = s.total > 0 ? Math.round((s.approved / s.total) * 100) : 0;
-                    return (
-                      <Link key={s.standard_id} href={`/documents?standard=${s.standard_id}`} className="block rounded-lg p-1 -m-1 hover:bg-surface-2">
-                        <div className="flex items-center justify-between gap-2 text-sm">
-                          <span className="flex items-center gap-2 font-medium text-fg">
-                            <Badge color={s.color} size="sm">{s.code}</Badge>
-                            <span className="truncate text-fg-muted">{s.name}</span>
-                          </span>
-                          <span className="tabular-nums text-fg">{formatNumber(s.total)}</span>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-3">
-                          <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
-                        </div>
-                        <p className="mt-1 text-[11px] text-fg-subtle">{pct}% del total · {approvedPct}% aprobados</p>
-                      </Link>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
+          <StatsCard stats={stats} />
 
-            <Card>
-              <CardHeader title="Añadidos recientemente" action={<Link href="/recent" className="text-xs font-medium text-primary hover:underline">Ver todo</Link>} />
-              <CardContent className="px-3 pt-3">
-                {added.length === 0 ? (
-                  <EmptyState compact title="No hay documentos todavía" description={canCreate ? "Sube el primer documento para comenzar." : "Aún no se ha publicado documentación."} action={canCreate ? <ButtonLink href="/documents/new" size="sm">Subir documento</ButtonLink> : undefined} />
-                ) : (
-                  <ul className="space-y-0.5">
-                    {added.map((d) => <DocRow key={d.id} doc={d} dateField="created_at" />)}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 gap-8 min-[900px]:grid-cols-2">
+            <section aria-label="Documentos recientes">
+              <SectionHeading title="Documentos recientes" href="/recent" linkLabel="Ver todos" />
+              <ListCard>
+                <RecentDocuments documents={added} />
+              </ListCard>
+            </section>
 
-            <Card>
-              <CardHeader title="Modificados recientemente" action={<Link href="/documents?sort=updated_at&dir=desc" className="text-xs font-medium text-primary hover:underline">Ver todo</Link>} />
-              <CardContent className="px-3 pt-3">
-                {modified.length === 0 ? (
-                  <EmptyState compact title="Sin modificaciones" description="Las actualizaciones aparecerán aquí." />
-                ) : (
-                  <ul className="space-y-0.5">
-                    {modified.map((d) => <DocRow key={d.id} doc={d} dateField="updated_at" />)}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
+            <section aria-label="Actividad reciente">
+              <SectionHeading title="Actividad reciente" href="/activity" linkLabel="Ver actividad" />
+              <ListCard>
+                <ActivityList logs={activity} />
+              </ListCard>
+            </section>
           </div>
-
-          <Card>
-            <CardHeader title="Actividad reciente" description="Últimas acciones registradas en el sistema." action={<Link href="/activity" className="text-xs font-medium text-primary hover:underline">Ver actividad</Link>} />
-            <CardContent className="pt-2">
-              <ActivityTimeline logs={activity} compact />
-            </CardContent>
-          </Card>
-        </div>
+        </>
       )}
     </>
   );

@@ -12,12 +12,13 @@ export function AppShell({ user, orgName, children }: { user: CurrentUser; orgNa
   const close = useCallback(() => setMobileOpen(false), []);
 
   return (
-    <div className="min-h-dvh bg-bg">
+    <div className="flex min-h-dvh bg-bg">
       <Sidebar user={user} orgName={orgName} mobileOpen={mobileOpen} onClose={close} />
-      <div className="flex min-h-dvh flex-col lg:pl-60">
-        <Topbar user={user} onMenuClick={() => setMobileOpen(true)} />
-        <main id="main" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-7xl animate-fade-in">{children}</div>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar user={user} orgName={orgName} onMenuClick={() => setMobileOpen(true)} />
+        <main id="main" className="w-full max-w-[1280px] flex-1 px-4 pb-12 pt-6 animate-fade-in sm:px-6 min-[900px]:pt-8">
+          {children}
         </main>
       </div>
     </div>

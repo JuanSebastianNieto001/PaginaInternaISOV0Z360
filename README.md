@@ -270,7 +270,7 @@ Notas del plan gratuito: Vercel limita el body de las funciones a 4,5 MB, por es
 | Área | Detalle |
 | --- | --- |
 | Autenticación | Login, logout, recuperación de contraseña, invitaciones, sesión por cookies, protección de rutas en proxy y servidor, redirección a `next`. |
-| Dashboard | Totales por estado y por norma, añadidos/modificados recientes, actividad, acciones rápidas según permisos. |
+| Dashboard | Saludo por franja horaria, bloque "Marco normativo y cumplimiento" con una tarjeta por norma que despliega sus usuarios más implicados y sus últimos documentos, indicadores por estado con porcentaje, documentos recientes y actividad. |
 | Repositorio | Búsqueda full-text (`spanish_unaccent`, prefijos), filtros combinables (norma, categoría, subcategoría, tipo, estado, versión, fechas, autor, etiquetas), ordenación, paginación server-side, vista lista/grid, filtros en bottom-sheet en móvil. |
 | Documento | Detalle completo, preview (PDF/imagen/texto), descarga auditada, favorito, edición de metadatos, cambio de estado, nueva versión, eliminación con limpieza de Storage. |
 | Versionado | Historial inmutable con archivo por versión, resumen de cambio, autor y descarga de versiones anteriores. |
@@ -278,7 +278,7 @@ Notas del plan gratuito: Vercel limita el body de las funciones a 4,5 MB, por es
 | Normas | Árbol Norma → Categoría → Subcategoría con conteos y enlaces filtrados. |
 | Actividad | Timeline paginado con filtros; visibilidad según `audit.read`. |
 | Administración | Usuarios (alta, edición, activar/desactivar, rol), matriz de permisos, normas, categorías, etiquetas y tipos, documentos, auditoría, ajustes globales. |
-| UI | Estados loading/empty/error/forbidden/not-found, dark mode sin parpadeo, responsive (sidebar → drawer, tablas → cards), toasts, diálogos accesibles. |
+| UI | Sistema de diseño VOZ360: tipografía Archivo (400/600/800) y paleta de marca (`--brand-100` … `--brand-900`) expuesta a Tailwind desde `globals.css`. Estados loading/empty/error/forbidden/not-found, dark mode sin parpadeo, responsive (sidebar → drawer bajo 900 px, normas 3 → 1 columna bajo 1200 px, tablas → cards), toasts, diálogos accesibles. |
 
 ## 13. Estructura del proyecto
 
@@ -297,6 +297,7 @@ src/
     ui/                     Button, Input, Select, Field, Badge, Card, Table, Tabs, Dialog,
                             Dropdown, Tooltip, Skeleton, Pagination, Avatar, Switch, States…
     layout/                 AppShell, Sidebar, Topbar, UserMenu, GlobalSearch, AdminNav
+    dashboard/              StandardsBoard (bloque de normas + panel), ActivityList
     documents/              DocumentCard, DocumentTable, DocumentFilters, DocumentForm,
                             FileDropzone, FilePreview, VersionTimeline, ActivityTimeline…
     admin/                  UsersManager, RolesMatrix, StandardsManager, CategoriesManager…
@@ -307,11 +308,11 @@ src/
     services/               documents, taxonomy, dashboard, users, roles, audit, favorites,
                             recent, tags, settings
     actions/                Server Actions (auth, documents, favorites, users, roles,
-                            taxonomy, settings, profile)
+                            taxonomy, settings, profile, dashboard)
     validation/             esquemas Zod
     storage/                upload.ts (cliente, XHR con progreso), server.ts (signed URLs)
     constants/              permisos, estados, navegación, auditoría
-    utils/                  cn, format, files, search, slug, url, errors
+    utils/                  cn, format, files, search, slug, url, errors, audit-meta
   types/                    tipos de dominio
 ```
 

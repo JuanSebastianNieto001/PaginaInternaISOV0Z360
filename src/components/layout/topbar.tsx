@@ -1,34 +1,64 @@
 "use client";
 
-import { Menu, Upload } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-import { can } from "@/lib/auth/permissions";
-import { PERMISSIONS } from "@/lib/constants/permissions";
+import { findNavLabel } from "@/lib/constants/navigation";
 import type { CurrentUser } from "@/types";
 
-import { Button, ButtonLink } from "../ui/button";
+import { Tooltip } from "../ui/tooltip";
 import { GlobalSearch } from "./global-search";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
-export function Topbar({ user, onMenuClick }: { user: CurrentUser; onMenuClick: () => void }) {
+export function Topbar({
+  user,
+  orgName,
+  onMenuClick,
+}: {
+  user: CurrentUser;
+  orgName: string;
+  onMenuClick: () => void;
+}) {
+  const pathname = usePathname();
+  const section = findNavLabel(pathname);
+
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-bg/60 sm:px-6">
-      <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick} aria-label="Abrir menú">
-        <Menu className="size-5" />
-      </Button>
+    <header className="sticky top-0 z-20 flex h-[60px] shrink-0 items-center gap-3 border-b-2 border-divider bg-bg px-4 sm:px-6">
+      <button
+        type="button"
+        onClick={onMenuClick}
+        aria-label="Abrir menú"
+        className="-ml-2 grid size-9 place-items-center rounded-lg text-fg transition-colors hover:bg-brand-100 hover:text-primary min-[900px]:hidden"
+      >
+        <Menu className="size-[18px]" />
+      </button>
 
-      <GlobalSearch className="flex-1 max-w-xl" />
+      <nav aria-label="Ruta" className="flex min-w-0 items-center gap-2 text-[13px] text-fg-subtle">
+        <span className="hidden truncate sm:inline">{orgName}</span>
+        <span className="hidden sm:inline" aria-hidden>
+          /
+        </span>
+        <span className="truncate font-semibold text-fg">{section}</span>
+      </nav>
 
-      <div className="ml-auto flex items-center gap-1.5">
-        {can(user, PERMISSIONS.DOCUMENTS_CREATE) ? (
-          <ButtonLink href="/documents/new" size="sm" className="hidden sm:inline-flex" leftIcon={<Upload className="size-4" />}>
-            Subir documento
-          </ButtonLink>
-        ) : null}
-        <ThemeToggle />
-        <UserMenu user={user} />
-      </div>
+      <div className="flex-1" />
+
+      <GlobalSearch className="hidden min-[900px]:block" />
+
+      <Tooltip content="Actividad reciente" side="bottom">
+        <Link
+          href="/activity"
+          aria-label="Actividad reciente"
+          className="grid size-[38px] shrink-0 place-items-center rounded-full border border-border-strong text-fg transition-colors hover:border-primary hover:bg-brand-100 hover:text-primary"
+        >
+          <Bell className="size-[17px]" />
+        </Link>
+      </Tooltip>
+
+      <ThemeToggle />
+      <UserMenu user={user} />
     </header>
   );
 }

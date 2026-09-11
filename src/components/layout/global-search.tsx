@@ -28,7 +28,7 @@ export function GlobalSearch({ className }: { className?: string }) {
   return (
     <form
       role="search"
-      className={cn("relative", className)}
+      className={cn("relative w-80 max-w-full", className)}
       onSubmit={(e) => {
         e.preventDefault();
         const q = value.trim();
@@ -36,21 +36,21 @@ export function GlobalSearch({ className }: { className?: string }) {
         ref.current?.blur();
       }}
     >
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+      <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[15px] -translate-y-1/2 text-fg-subtle" />
       <input
         ref={ref}
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Buscar documentos…"
+        placeholder="Buscar documentos, códigos…"
         aria-label="Buscar documentos"
         className={cn(
-          "h-9 w-full rounded-md border border-border bg-surface-2/60 pl-9 pr-12 text-sm text-fg transition-colors",
-          "placeholder:text-fg-subtle hover:border-border-strong focus:bg-surface focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-ring",
+          "h-[38px] w-full rounded-full border border-border-strong bg-surface-2 pl-10 pr-14 text-[13px] text-fg transition-colors",
+          "placeholder:text-fg-subtle hover:border-primary focus-visible:border-primary focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-ring",
         )}
       />
-      <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-surface px-1.5 py-px font-mono text-[10px] text-fg-subtle sm:block">
-        /
+      <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-border-strong px-1.5 py-px text-[11px] text-fg-subtle sm:block">
+        ⌘K
       </kbd>
     </form>
   );

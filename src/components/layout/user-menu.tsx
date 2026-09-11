@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { LogOut, Settings, ShieldCheck } from "lucide-react";
 import { useTransition } from "react";
 
 import { signOut } from "@/lib/actions/auth.actions";
@@ -17,15 +17,9 @@ export function UserMenu({ user }: { user: CurrentUser }) {
   return (
     <Dropdown
       align="end"
-      triggerClassName="gap-2 rounded-md px-1.5 py-1 hover:bg-surface-2"
+      triggerClassName="rounded-full"
       trigger={
-        <>
-          <Avatar name={user.fullName || user.email} src={user.avatarUrl} size="sm" />
-          <span className="hidden max-w-32 truncate text-sm font-medium text-fg md:block">
-            {user.fullName || user.email}
-          </span>
-          <ChevronDown className="hidden size-3.5 text-fg-subtle md:block" />
-        </>
+        <Avatar name={user.fullName || user.email} src={user.avatarUrl} size="md" tone="brand" />
       }
     >
       <DropdownLabel>

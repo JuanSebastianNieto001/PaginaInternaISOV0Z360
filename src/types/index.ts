@@ -183,6 +183,24 @@ export interface StandardStat {
   approved: number;
 }
 
+/** Usuario con más acciones registradas sobre los documentos de una norma. */
+export interface StandardContributor {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string | null;
+  roleName: string | null;
+  actions: number;
+}
+
+/** Contenido del panel desplegable de una norma en el dashboard. */
+export interface StandardOverview {
+  standardId: string;
+  contributors: StandardContributor[];
+  documents: DocumentListItem[];
+  totalDocuments: number;
+}
+
 export interface DashboardStats {
   total: number;
   draft: number;

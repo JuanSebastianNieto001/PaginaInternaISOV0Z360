@@ -1,19 +1,7 @@
-import { Archivo } from "next/font/google";
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 
 import { cn } from "@/lib/utils/cn";
-
-/**
- * Fuente de marca del acceso. Se carga solo en la ruta (auth) y se expone como
- * --font-archivo; globals.css la mapea al token `font-brand`.
- */
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: ["400", "600", "800"],
-  variable: "--font-archivo",
-  display: "swap",
-});
 
 /** Palabras del titular con su retardo de animación (escalonado). */
 const HEADLINE: { text: string; delay: string; accent?: boolean; breakAfter?: boolean }[] = [
@@ -67,7 +55,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div
       className={cn(
-        archivo.variable,
         "light-scope grid min-h-dvh grid-cols-1 bg-white font-brand text-[#0f1b2d]",
         "min-[900px]:h-dvh min-[900px]:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] min-[900px]:overflow-hidden",
       )}

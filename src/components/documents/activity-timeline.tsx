@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 import { describeAuditAction } from "@/lib/constants/audit";
+import { auditEntityHref, auditEntityLabel, auditMetaValue } from "@/lib/utils/audit-meta";
 import { cn } from "@/lib/utils/cn";
 import { formatDateTime, formatRelative } from "@/lib/utils/format";
-import type { AuditLogItem, Json } from "@/types";
+import type { AuditLogItem } from "@/types";
 
 import { Avatar } from "../ui/avatar";
 import { EmptyState } from "../ui/states";
@@ -16,27 +17,6 @@ const TONE_CLASSES: Record<string, string> = {
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
 };
-
-function meta(m: Json, key: string): string | undefined {
-  if (typeof m !== "object" || m === null || Array.isArray(m)) return undefined;
-  const v = m[key];
-  return typeof v === "string" ? v : typeof v === "number" ? String(v) : undefined;
-}
-
-function entityLabel(log: AuditLogItem): string | undefined {
-  const m = log.metadata;
-  const name = meta(m, "name") ?? meta(m, "full_name") ?? meta(m, "email");
-  const code = meta(m, "code");
-  if (name && code) return `${code} · ${name}`;
-  return name ?? code;
-}
-
-function entityHref(log: AuditLogItem): string | undefined {
-  if (!log.entity_id) return undefined;
-  if (log.entity_type === "document" && !log.action.endsWith(".deleted")) return `/documents/${log.entity_id}`;
-  if (log.entity_type === "user") return `/admin/users?q=${encodeURIComponent(meta(log.metadata, "email") ?? "")}`;
-  return undefined;
-}
 
 export function ActivityTimeline({
   logs,
@@ -58,10 +38,10 @@ export function ActivityTimeline({
       {logs.map((log) => {
         const p = describeAuditAction(log.action);
         const Icon = p.icon;
-        const label = entityLabel(log);
-        const href = entityHref(log);
-        const version = meta(log.metadata, "version");
-        const summary = meta(log.metadata, "change_summary");
+        const label = auditEntityLabel(log);
+        const href = auditEntityHref(log);
+        const version = auditMetaValue(log.metadata, "version");
+        const summary = auditMetaValue(log.metadata, "change_summary");
 
         return (
           <li key={log.id} className={cn("flex items-start gap-3", compact ? "py-3" : "px-4 py-3.5")}>
