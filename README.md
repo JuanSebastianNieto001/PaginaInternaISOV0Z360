@@ -92,17 +92,21 @@ Preparado para crecer: `documents` incluye `effective_date` y `review_date`; los
 
 ## 5. Roles y permisos
 
-| Permiso | SUPER_ADMIN | ADMIN | CONSULTOR | VISUALIZADOR |
-| --- | :-: | :-: | :-: | :-: |
-| `documents.read` | ✔ | ✔ | ✔ | ✔ |
-| `documents.download` | ✔ | ✔ | ✔ | — |
-| `documents.create` / `update` / `delete` | ✔ | ✔ | — | — |
-| `categories.manage` (categorías, subcategorías, tipos, etiquetas) | ✔ | ✔ | — | — |
-| `audit.read` | ✔ | ✔ | — | — |
-| `standards.manage` | ✔ | — | — | — |
-| `users.manage` | ✔ | — | — | — |
-| `roles.manage` | ✔ | — | — | — |
-| `settings.manage` | ✔ | — | — | — |
+| Permiso | SUPER_ADMIN | ADMIN | COLABORADOR | CONSULTOR | VISUALIZADOR |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| `documents.read` | ✔ | ✔ | ✔ | ✔ | ✔ |
+| `documents.download` | ✔ | ✔ | ✔ | ✔ | — |
+| `documents.create` | ✔ | ✔ | ✔ | — | — |
+| `documents.update` (incluye aprobar y cambiar de estado) | ✔ | ✔ | — | — | — |
+| `documents.delete` | ✔ | ✔ | — | — | — |
+| `categories.manage` (categorías, subcategorías, tipos, etiquetas) | ✔ | ✔ | — | — | — |
+| `audit.read` | ✔ | ✔ | — | — | — |
+| `standards.manage` | ✔ | — | — | — | — |
+| `users.manage` | ✔ | — | — | — | — |
+| `roles.manage` | ✔ | — | — | — | — |
+| `settings.manage` | ✔ | — | — | — | — |
+
+COLABORADOR (`006_rol_colaborador.sql`) es el perfil de quien aporta documentación sin decidir sobre ella: sube y consulta, pero no edita, aprueba ni elimina. Aprobar un documento es un cambio de estado y exige `documents.update`.
 
 Reglas adicionales aplicadas por trigger (`protect_profile_fields`):
 
@@ -178,6 +182,7 @@ supabase/migrations/002_rls.sql              # políticas Row Level Security
 supabase/migrations/003_storage.sql          # bucket privado `documents` + políticas
 supabase/migrations/004_seed.sql             # roles, permisos, normas, categorías, tipos, etiquetas, ajustes
 supabase/migrations/005_force_password_change.sql  # cambio de contraseña obligatorio
+supabase/migrations/006_rol_colaborador.sql        # rol COLABORADOR (sube documentos, no edita ni aprueba)
 ```
 
 Todas son idempotentes (`if not exists`, `on conflict`), pueden volver a ejecutarse.

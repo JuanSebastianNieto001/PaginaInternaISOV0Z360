@@ -17,6 +17,7 @@ export const PERMISSIONS = {
 export const ROLES = {
   SUPER_ADMIN: "SUPER_ADMIN",
   ADMIN: "ADMIN",
+  COLABORADOR: "COLABORADOR",
   CONSULTOR: "CONSULTOR",
   VISUALIZADOR: "VISUALIZADOR",
 } as const satisfies Record<string, RoleCode>;

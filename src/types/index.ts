@@ -37,7 +37,7 @@ export type PermissionCode =
   | "audit.read"
   | "settings.manage";
 
-export type RoleCode = "SUPER_ADMIN" | "ADMIN" | "CONSULTOR" | "VISUALIZADOR";
+export type RoleCode = "SUPER_ADMIN" | "ADMIN" | "COLABORADOR" | "CONSULTOR" | "VISUALIZADOR";
 
 /* ----------------------------------------------------------------------------
  * Usuario actual (sesión + perfil + permisos)
