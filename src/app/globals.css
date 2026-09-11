@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+/* Dark mode por clase (controlado por ThemeProvider) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+ * Design tokens
+ * Paleta sobria y profesional. Los colores semánticos se exponen a Tailwind
+ * mediante @theme inline para poder usar bg-surface, text-fg-muted, etc.
+ * ------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --bg: oklch(98.2% 0.003 250);
+  --surface: oklch(100% 0 0);
+  --surface-2: oklch(96.8% 0.004 250);
+  --surface-3: oklch(94.5% 0.006 250);
+  --border: oklch(90.5% 0.008 250);
+  --border-strong: oklch(84% 0.01 250);
+
+  --fg: oklch(22% 0.02 260);
+  --fg-muted: oklch(48% 0.02 260);
+  --fg-subtle: oklch(62% 0.015 260);
+  --fg-inverted: oklch(99% 0 0);
+
+  --primary: oklch(45% 0.16 262);
+  --primary-hover: oklch(40% 0.16 262);
+  --primary-soft: oklch(94% 0.04 262);
+  --primary-fg: oklch(99% 0 0);
+
+  --accent: oklch(60% 0.14 200);
+
+  --success: oklch(58% 0.15 150);
+  --success-soft: oklch(94% 0.06 150);
+  --warning: oklch(70% 0.15 70);
+  --warning-soft: oklch(95% 0.07 80);
+  --danger: oklch(56% 0.2 25);
+  --danger-soft: oklch(95% 0.04 25);
+  --info: oklch(58% 0.14 240);
+  --info-soft: oklch(94% 0.04 240);
+
+  --ring: oklch(60% 0.16 262 / 0.5);
+  --shadow-color: 220 20% 20%;
+
+  --radius: 0.625rem;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --bg: oklch(15% 0.012 260);
+  --surface: oklch(19% 0.014 260);
+  --surface-2: oklch(23% 0.015 260);
+  --surface-3: oklch(27% 0.016 260);
+  --border: oklch(29% 0.016 260);
+  --border-strong: oklch(36% 0.018 260);
+
+  --fg: oklch(94% 0.006 260);
+  --fg-muted: oklch(70% 0.012 260);
+  --fg-subtle: oklch(56% 0.012 260);
+  --fg-inverted: oklch(15% 0 0);
+
+  --primary: oklch(70% 0.14 262);
+  --primary-hover: oklch(76% 0.13 262);
+  --primary-soft: oklch(30% 0.07 262);
+  --primary-fg: oklch(15% 0.02 262);
+
+  --accent: oklch(72% 0.12 200);
+
+  --success: oklch(72% 0.15 150);
+  --success-soft: oklch(28% 0.06 150);
+  --warning: oklch(78% 0.15 75);
+  --warning-soft: oklch(30% 0.07 75);
+  --danger: oklch(70% 0.18 25);
+  --danger-soft: oklch(30% 0.07 25);
+  --info: oklch(72% 0.13 240);
+  --info-soft: oklch(30% 0.06 240);
+
+  --ring: oklch(70% 0.14 262 / 0.55);
+  --shadow-color: 220 30% 2%;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-inverted: var(--fg-inverted);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --color-ring: var(--ring);
+
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.25rem);
+  --radius-xl: calc(var(--radius) + 0.5rem);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.06), 0 1px 3px hsl(var(--shadow-color) / 0.04);
+  --shadow-pop: 0 4px 16px hsl(var(--shadow-color) / 0.12), 0 1px 3px hsl(var(--shadow-color) / 0.08);
+}
+
+/* ---------------------------------------------------------------------------
+ * Base
+ * ------------------------------------------------------------------------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  border-color: var(--border);
+}
+
+::selection {
+  background: var(--primary-soft);
+}
+
+/* Scrollbars discretos */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Focus visible coherente */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Utilidades */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Animaciones ligeras */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 160ms ease-out both;
+}
+
+@utility animate-slide-in-right {
+  animation: slide-in-right 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@utility animate-slide-in-left {
+  animation: slide-in-left 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@utility animate-slide-up {
+  animation: slide-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
