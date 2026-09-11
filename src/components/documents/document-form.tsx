@@ -9,7 +9,7 @@ import { DOCUMENT_STATUSES, DOCUMENT_STATUS_DESCRIPTIONS, DOCUMENT_STATUS_LABELS
 import { removeUploadedFile, uploadFileWithProgress } from "@/lib/storage/upload";
 import { buildStoragePath, getExtension, guessMimeType } from "@/lib/utils/files";
 import { createDocumentSchema, updateDocumentSchema } from "@/lib/validation/documents";
-import type { DocumentDetail, DocumentStatus, DocumentType, StandardWithCategories } from "@/types";
+import type { Area, DocumentDetail, DocumentStatus, DocumentType, StandardWithCategories } from "@/types";
 
 import { useToast } from "../providers/toast-provider";
 import { Button, ButtonLink } from "../ui/button";
@@ -24,6 +24,7 @@ export interface DocumentFormProps {
   mode: "create" | "edit";
   tree: StandardWithCategories[];
   documentTypes: DocumentType[];
+  areas: Area[];
   tagSuggestions: string[];
   settings: { maxFileSizeMb: number; allowedExtensions: string[]; defaultStatus: DocumentStatus };
   initial?: DocumentDetail;
@@ -37,6 +38,7 @@ interface FormValues {
   categoryId: string;
   subcategoryId: string;
   documentTypeId: string;
+  areaId: string;
   status: DocumentStatus;
   version: string;
   tags: string[];
@@ -44,7 +46,7 @@ interface FormValues {
   reviewDate: string;
 }
 
-export function DocumentForm({ mode, tree, documentTypes, tagSuggestions, settings, initial }: DocumentFormProps) {
+export function DocumentForm({ mode, tree, documentTypes, areas, tagSuggestions, settings, initial }: DocumentFormProps) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
@@ -62,6 +64,7 @@ export function DocumentForm({ mode, tree, documentTypes, tagSuggestions, settin
     categoryId: initial?.category_id ?? "",
     subcategoryId: initial?.subcategory_id ?? "",
     documentTypeId: initial?.document_type_id ?? "",
+    areaId: initial?.area_id ?? "",
     status: initial?.status ?? settings.defaultStatus,
     version: initial?.version ?? "1.0",
     tags: initial?.tags.map((t) => t.name) ?? [],
@@ -237,7 +240,7 @@ export function DocumentForm({ mode, tree, documentTypes, tagSuggestions, settin
         </Card>
 
         <Card>
-          <CardHeader title="Clasificación" description="Norma, categoría y tipo. Permiten filtrar y organizar el repositorio." />
+          <CardHeader title="Clasificación" description="Norma, categoría, tipo y área responsable. Permiten filtrar y organizar el repositorio." />
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <Field label="Norma" htmlFor="standardId" required error={fieldErrors.standardId}>
               <Select id="standardId" value={values.standardId} onChange={(e) => set("standardId", e.target.value)} placeholder="Selecciona una norma" options={tree.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))} disabled={busy} invalid={Boolean(fieldErrors.standardId)} />
@@ -250,6 +253,9 @@ export function DocumentForm({ mode, tree, documentTypes, tagSuggestions, settin
             </Field>
             <Field label="Subcategoría" htmlFor="subcategoryId" error={fieldErrors.subcategoryId}>
               <Select id="subcategoryId" value={values.subcategoryId} onChange={(e) => set("subcategoryId", e.target.value)} placeholder={values.categoryId ? "Sin subcategoría" : "Primero elige la categoría"} options={subcategories.map((s) => ({ value: s.id, label: s.name }))} disabled={busy || !values.categoryId || subcategories.length === 0} />
+            </Field>
+            <Field label="Área responsable" htmlFor="areaId" error={fieldErrors.areaId} hint="Cargo o área dueña del documento." className="sm:col-span-2">
+              <Select id="areaId" value={values.areaId} onChange={(e) => set("areaId", e.target.value)} placeholder="Sin área asignada" options={areas.map((a) => ({ value: a.id, label: a.name }))} disabled={busy} invalid={Boolean(fieldErrors.areaId)} />
             </Field>
             <Field label="Etiquetas" htmlFor="tags" error={fieldErrors.tags} hint="Pulsa Enter o coma para añadir. Máximo 15." className="sm:col-span-2">
               <TagInput id="tags" value={values.tags} onChange={(t) => set("tags", t)} suggestions={tagSuggestions} disabled={busy} />

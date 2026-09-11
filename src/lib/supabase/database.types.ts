@@ -279,6 +279,37 @@ export type Database = {
           },
         ];
       };
+      areas: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          description: string | null;
+          active: boolean;
+          sort_order: number;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          code: string;
+          name: string;
+          description?: string | null;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          name?: string;
+          description?: string | null;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       document_types: {
         Row: {
           id: string;
@@ -320,6 +351,7 @@ export type Database = {
           category_id: string;
           subcategory_id: string | null;
           document_type_id: string;
+          area_id: string | null;
           status: DocumentStatus;
           version: string;
           file_path: string;
@@ -343,6 +375,7 @@ export type Database = {
           category_id: string;
           subcategory_id?: string | null;
           document_type_id: string;
+          area_id?: string | null;
           status?: DocumentStatus;
           version?: string;
           file_path: string;
@@ -367,6 +400,7 @@ export type Database = {
           category_id?: string;
           subcategory_id?: string | null;
           document_type_id?: string;
+          area_id?: string | null;
           status?: DocumentStatus;
           version?: string;
           file_path?: string;
@@ -409,6 +443,13 @@ export type Database = {
             columns: ["document_type_id"];
             isOneToOne: false;
             referencedRelation: "document_types";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "documents_area_id_fkey";
+            columns: ["area_id"];
+            isOneToOne: false;
+            referencedRelation: "areas";
             referencedColumns: ["id"];
           },
           {
@@ -723,6 +764,10 @@ export type Database = {
           subcategory_id: string | null;
           total: number;
         }[];
+      };
+      get_area_counts: {
+        Args: Record<string, never>;
+        Returns: { area_id: string; total: number }[];
       };
       refresh_document_search_vector: { Args: { p_document_id: string }; Returns: undefined };
     };

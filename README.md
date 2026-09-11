@@ -183,6 +183,7 @@ supabase/migrations/003_storage.sql          # bucket privado `documents` + pol�
 supabase/migrations/004_seed.sql             # roles, permisos, normas, categorías, tipos, etiquetas, ajustes
 supabase/migrations/005_force_password_change.sql  # cambio de contraseña obligatorio
 supabase/migrations/006_rol_colaborador.sql        # rol COLABORADOR (sube documentos, no edita ni aprueba)
+supabase/migrations/007_areas.sql                  # áreas responsables (dimensión global) + conteo por área
 ```
 
 Todas son idempotentes (`if not exists`, `on conflict`), pueden volver a ejecutarse.
@@ -276,6 +277,7 @@ Notas del plan gratuito: Vercel limita el body de las funciones a 4,5 MB, por es
 | Versionado | Historial inmutable con archivo por versión, resumen de cambio, autor y descarga de versiones anteriores. |
 | Recientes / Favoritos | Por usuario; vistos, añadidos y modificados. |
 | Normas | Árbol Norma → Categoría → Subcategoría con conteos y enlaces filtrados. |
+| Áreas responsables | Cargo o área dueña del documento (CEO, Contabilidad, Líder ISO, Formación…). Dimensión **global**, transversal a las normas: se elige al subir, filtra el repositorio, entra en la búsqueda libre y tiene su propio bloque en el dashboard. Se administran en `/admin/areas`. |
 | Actividad | Timeline paginado con filtros; visibilidad según `audit.read`. |
 | Administración | Usuarios (alta, edición, activar/desactivar, rol), matriz de permisos, normas, categorías, etiquetas y tipos, documentos, auditoría, ajustes globales. |
 | UI | Sistema de diseño VOZ360: tipografía Archivo (400/600/800) y paleta de marca (`--brand-100` … `--brand-900`) expuesta a Tailwind desde `globals.css`. Estados loading/empty/error/forbidden/not-found, dark mode sin parpadeo, responsive (sidebar → drawer bajo 900 px, normas 3 → 1 columna bajo 1200 px, tablas → cards), toasts, diálogos accesibles. |
@@ -297,10 +299,10 @@ src/
     ui/                     Button, Input, Select, Field, Badge, Card, Table, Tabs, Dialog,
                             Dropdown, Tooltip, Skeleton, Pagination, Avatar, Switch, States…
     layout/                 AppShell, Sidebar, Topbar, UserMenu, GlobalSearch, AdminNav
-    dashboard/              StandardsBoard (bloque de normas + panel), ActivityList
+    dashboard/              StandardsBoard (bloque de normas + panel), AreasBoard, ActivityList
     documents/              DocumentCard, DocumentTable, DocumentFilters, DocumentForm,
                             FileDropzone, FilePreview, VersionTimeline, ActivityTimeline…
-    admin/                  UsersManager, RolesMatrix, StandardsManager, CategoriesManager…
+    admin/                  UsersManager, RolesMatrix, StandardsManager, CategoriesManager, AreasManager…
     providers/              ThemeProvider, ToastProvider
   lib/
     supabase/               client.ts, server.ts, admin.ts (server-only), proxy.ts, database.types.ts

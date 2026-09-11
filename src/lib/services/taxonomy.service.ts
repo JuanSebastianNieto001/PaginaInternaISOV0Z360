@@ -1,5 +1,6 @@
 import type { TypedSupabaseClient } from "@/lib/supabase/server";
 import type {
+  Area,
   Category,
   CategoryWithSubcategories,
   DocumentType,
@@ -99,6 +100,30 @@ export async function getTaxonomyTree(
   return standards.map((s) => ({ ...s, categories: catsByStandard.get(s.id) ?? [] }));
 }
 
+/** Áreas o cargos responsables. Dimensión global, no cuelga de una norma. */
+export async function listAreas(
+  supabase: TypedSupabaseClient,
+  { includeInactive = false }: TaxonomyOptions = {},
+): Promise<Area[]> {
+  let q = supabase.from("areas").select("*").order("sort_order").order("name");
+  if (!includeInactive) q = q.eq("active", true);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export interface AreaCount {
+  area_id: string;
+  total: number;
+}
+
+/** Conteo de documentos por área (dashboard). */
+export async function getAreaCounts(supabase: TypedSupabaseClient): Promise<AreaCount[]> {
+  const { data, error } = await supabase.rpc("get_area_counts");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ area_id: r.area_id, total: Number(r.total) }));
+}
+
 export interface TaxonomyCount {
   standard_id: string;
   category_id: string;
@@ -115,9 +140,10 @@ export async function getTaxonomyCounts(supabase: TypedSupabaseClient): Promise<
 
 /** Datos necesarios para los formularios de documento y los filtros. */
 export async function getDocumentFormOptions(supabase: TypedSupabaseClient) {
-  const [tree, documentTypes] = await Promise.all([
+  const [tree, documentTypes, areas] = await Promise.all([
     getTaxonomyTree(supabase),
     listDocumentTypes(supabase),
+    listAreas(supabase),
   ]);
-  return { tree, documentTypes };
+  return { tree, documentTypes, areas };
 }

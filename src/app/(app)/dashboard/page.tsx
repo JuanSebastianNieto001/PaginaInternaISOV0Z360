@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActivityList } from "@/components/dashboard/activity-list";
+import { AreasBoard, type AreaCard } from "@/components/dashboard/areas-board";
 import { StandardsBoard, type StandardCardData } from "@/components/dashboard/standards-board";
 import { FileExtBox } from "@/components/documents/file-ext-box";
 import { StatusBadge } from "@/components/documents/status-badge";
@@ -15,11 +16,11 @@ import { PERMISSIONS } from "@/lib/constants/permissions";
 import { getRecentActivity } from "@/lib/services/audit.service";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { getRecentlyAdded } from "@/lib/services/documents.service";
-import { listStandards } from "@/lib/services/taxonomy.service";
+import { getAreaCounts, listAreas, listStandards } from "@/lib/services/taxonomy.service";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/cn";
 import { formatNumber, formatRelative, greeting, longDateLabel } from "@/lib/utils/format";
-import type { AuditLogItem, DashboardStats, DocumentListItem, Standard } from "@/types";
+import type { Area, AuditLogItem, DashboardStats, DocumentListItem, Standard } from "@/types";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -143,14 +144,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   let stats: DashboardStats | undefined;
   let standards: Standard[] = [];
+  let areas: Area[] = [];
+  let areaCounts: { area_id: string; total: number }[] = [];
   let added: DocumentListItem[] = [];
   let activity: AuditLogItem[] = [];
   let failed = false;
 
   try {
-    [stats, standards, added, activity] = await Promise.all([
+    [stats, standards, areas, areaCounts, added, activity] = await Promise.all([
       getDashboardStats(supabase),
       listStandards(supabase),
+      listAreas(supabase),
+      getAreaCounts(supabase),
       getRecentlyAdded(supabase, 5),
       getRecentActivity(supabase, 6),
     ]);
@@ -172,6 +177,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     total: statsByStandard.get(standard.id)?.total ?? 0,
     approved: statsByStandard.get(standard.id)?.approved ?? 0,
   }));
+
+  const documentsByArea = new Map(areaCounts.map((c) => [c.area_id, c.total]));
+  const areaCards: AreaCard[] = areas.map((area) => ({ area, total: documentsByArea.get(area.id) ?? 0 }));
 
   return (
     <>
@@ -232,6 +240,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       ) : (
         <>
           {standardCards.length > 0 ? <StandardsBoard standards={standardCards} /> : null}
+
+          <AreasBoard areas={areaCards} />
 
           <StatsCard stats={stats} />
 

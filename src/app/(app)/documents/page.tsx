@@ -47,7 +47,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   }
 
   const hasFilters = Boolean(
-    query.q || query.standardId || query.categoryId || query.subcategoryId || query.documentTypeId || query.status || query.version || query.dateFrom || query.dateTo || query.createdBy || (query.tagIds && query.tagIds.length > 0),
+    query.q || query.standardId || query.categoryId || query.subcategoryId || query.documentTypeId || query.areaId || query.status || query.version || query.dateFrom || query.dateTo || query.createdBy || (query.tagIds && query.tagIds.length > 0),
   );
 
   return (
@@ -66,6 +66,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
             <DocumentFilters
               tree={options.tree}
               documentTypes={options.documentTypes}
+              areas={options.areas}
               tags={tags ?? []}
               authors={authors ?? []}
               versions={versions ?? []}

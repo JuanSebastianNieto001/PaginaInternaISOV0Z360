@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  Building2,
   BookMarked,
   Download,
   FileEdit,
@@ -39,6 +40,9 @@ export const AUDIT_ACTIONS = {
   STANDARD_CREATED: "standard.created",
   STANDARD_UPDATED: "standard.updated",
   STANDARD_DELETED: "standard.deleted",
+  AREA_CREATED: "area.created",
+  AREA_UPDATED: "area.updated",
+  AREA_DELETED: "area.deleted",
   CATEGORY_CREATED: "category.created",
   CATEGORY_UPDATED: "category.updated",
   CATEGORY_DELETED: "category.deleted",
@@ -77,6 +81,9 @@ const PRESENTATION: Record<string, AuditPresentation> = {
   "standard.created": { label: "Creó la norma", icon: BookMarked, tone: "success" },
   "standard.updated": { label: "Actualizó la norma", icon: BookMarked, tone: "info" },
   "standard.deleted": { label: "Eliminó la norma", icon: BookMarked, tone: "danger" },
+  "area.created": { label: "Creó el área", icon: Building2, tone: "success" },
+  "area.updated": { label: "Actualizó el área", icon: Building2, tone: "info" },
+  "area.deleted": { label: "Eliminó el área", icon: Building2, tone: "danger" },
   "category.created": { label: "Creó la categoría", icon: Layers, tone: "success" },
   "category.updated": { label: "Actualizó la categoría", icon: Layers, tone: "info" },
   "category.deleted": { label: "Eliminó la categoría", icon: Layers, tone: "danger" },

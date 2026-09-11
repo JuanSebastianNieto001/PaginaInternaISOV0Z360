@@ -56,6 +56,21 @@ export const documentTypeSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
 });
 
+export const areaSchema = z.object({
+  id: uuid.optional(),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(2)
+    .max(40)
+    .regex(/^[A-Z0-9_]+$/, "Usa mayúsculas, números o guiones bajos."),
+  name: nameSchema,
+  description: descriptionSchema,
+  active: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).max(9999).default(0),
+});
+
 export const tagSchema = z.object({
   id: uuid.optional(),
   name: z.string().trim().min(1, "El nombre es obligatorio.").max(40),

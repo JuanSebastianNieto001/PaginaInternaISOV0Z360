@@ -37,6 +37,7 @@ const documentBase = {
   categoryId: uuid,
   subcategoryId: uuid.optional().or(z.literal("")),
   documentTypeId: uuid,
+  areaId: uuid.optional().or(z.literal("")),
   status: documentStatusSchema,
   version: versionSchema,
   tags: tagsSchema,

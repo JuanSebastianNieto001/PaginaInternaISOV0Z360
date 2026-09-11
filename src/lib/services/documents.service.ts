@@ -21,13 +21,14 @@ const LIST_SELECT = `
   category:categories ( id, code, name ),
   subcategory:subcategories ( id, code, name ),
   document_type:document_types ( id, code, name ),
+  area:areas ( id, code, name ),
   creator:profiles!documents_created_by_fkey ( id, full_name, email, avatar_url ),
   updater:profiles!documents_updated_by_fkey ( id, full_name, email, avatar_url )
 `;
 
 const DETAIL_SELECT = `
   ${LIST_SELECT},
-  standard_id, category_id, subcategory_id, document_type_id,
+  standard_id, category_id, subcategory_id, document_type_id, area_id,
   file_path, approved_at, effective_date, review_date, created_by, updated_by
 `;
 
@@ -93,6 +94,7 @@ export async function listDocuments(
   if (query.categoryId) q = q.eq("category_id", query.categoryId);
   if (query.subcategoryId) q = q.eq("subcategory_id", query.subcategoryId);
   if (query.documentTypeId) q = q.eq("document_type_id", query.documentTypeId);
+  if (query.areaId) q = q.eq("area_id", query.areaId);
   if (query.status) q = q.eq("status", query.status);
   if (query.version) q = q.eq("version", query.version);
   if (query.createdBy) q = q.eq("created_by", query.createdBy);

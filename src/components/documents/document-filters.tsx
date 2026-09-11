@@ -8,6 +8,7 @@ import { DOCUMENT_STATUSES, DOCUMENT_STATUS_LABELS } from "@/lib/constants/docum
 import { cn } from "@/lib/utils/cn";
 import { buildQueryString } from "@/lib/utils/url";
 import type {
+  Area,
   DocumentQuery,
   DocumentStatus,
   DocumentType,
@@ -26,6 +27,7 @@ import { Select } from "../ui/select";
 export interface DocumentFiltersProps {
   tree: StandardWithCategories[];
   documentTypes: DocumentType[];
+  areas: Area[];
   tags: TagSummary[];
   authors: ProfileSummary[];
   versions: string[];
@@ -39,6 +41,7 @@ type Draft = {
   categoryId: string;
   subcategoryId: string;
   documentTypeId: string;
+  areaId: string;
   status: string;
   version: string;
   dateFrom: string;
@@ -54,6 +57,7 @@ function toDraft(q: DocumentQuery): Draft {
     categoryId: q.categoryId ?? "",
     subcategoryId: q.subcategoryId ?? "",
     documentTypeId: q.documentTypeId ?? "",
+    areaId: q.areaId ?? "",
     status: q.status ?? "",
     version: q.version ?? "",
     dateFrom: q.dateFrom ?? "",
@@ -69,6 +73,7 @@ function countActive(d: Draft): number {
     d.categoryId,
     d.subcategoryId,
     d.documentTypeId,
+    d.areaId,
     d.status,
     d.version,
     d.dateFrom,
@@ -77,7 +82,7 @@ function countActive(d: Draft): number {
   ].filter(Boolean).length + (d.tagIds.length > 0 ? 1 : 0);
 }
 
-export function DocumentFilters({ tree, documentTypes, tags, authors, versions, query, basePath = "/documents" }: DocumentFiltersProps) {
+export function DocumentFilters({ tree, documentTypes, areas, tags, authors, versions, query, basePath = "/documents" }: DocumentFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [draft, setDraft] = useState<Draft>(() => toDraft(query));
@@ -100,6 +105,7 @@ export function DocumentFilters({ tree, documentTypes, tags, authors, versions, 
       category: next.categoryId || undefined,
       subcategory: next.subcategoryId || undefined,
       type: next.documentTypeId || undefined,
+      area: next.areaId || undefined,
       status: next.status || undefined,
       version: next.version || undefined,
       from: next.dateFrom || undefined,
@@ -136,7 +142,7 @@ export function DocumentFilters({ tree, documentTypes, tags, authors, versions, 
   };
 
   const reset = () => {
-    const empty = toDraft({ ...query, q: undefined, standardId: undefined, categoryId: undefined, subcategoryId: undefined, documentTypeId: undefined, status: undefined, version: undefined, dateFrom: undefined, dateTo: undefined, createdBy: undefined, tagIds: [] });
+    const empty = toDraft({ ...query, q: undefined, standardId: undefined, categoryId: undefined, subcategoryId: undefined, documentTypeId: undefined, areaId: undefined, status: undefined, version: undefined, dateFrom: undefined, dateTo: undefined, createdBy: undefined, tagIds: [] });
     setDraft(empty);
     commit(empty);
     setSheetOpen(false);
@@ -158,11 +164,13 @@ export function DocumentFilters({ tree, documentTypes, tags, authors, versions, 
     const cat = categories.find((c) => c.id === draft.categoryId);
     const sub = subcategories.find((s) => s.id === draft.subcategoryId);
     const type = documentTypes.find((t) => t.id === draft.documentTypeId);
+    const area = areas.find((a) => a.id === draft.areaId);
     const author = authors.find((a) => a.id === draft.createdBy);
     if (std) chips.push({ key: "standardId", label: std.code });
     if (cat) chips.push({ key: "categoryId", label: cat.name });
     if (sub) chips.push({ key: "subcategoryId", label: sub.name });
     if (type) chips.push({ key: "documentTypeId", label: type.name });
+    if (area) chips.push({ key: "areaId", label: area.name });
     if (draft.status) chips.push({ key: "status", label: DOCUMENT_STATUS_LABELS[draft.status as DocumentStatus] });
     if (draft.version) chips.push({ key: "version", label: `v${draft.version}` });
     if (draft.dateFrom) chips.push({ key: "dateFrom", label: `Desde ${draft.dateFrom}` });
@@ -173,7 +181,7 @@ export function DocumentFilters({ tree, documentTypes, tags, authors, versions, 
       if (t) chips.push({ key: "tagIds", label: `#${t.name}`, value: id });
     }
     return chips;
-  }, [draft, tree, categories, subcategories, documentTypes, authors, tags]);
+  }, [draft, tree, categories, subcategories, documentTypes, areas, authors, tags]);
 
   const removeChip = (chip: { key: keyof Draft; value?: string }) => {
     if (chip.key === "tagIds") change({ tagIds: draft.tagIds.filter((t) => t !== chip.value) });
@@ -215,6 +223,14 @@ export function DocumentFilters({ tree, documentTypes, tags, authors, versions, 
           onChange={(e) => change({ documentTypeId: e.target.value }, immediate)}
           placeholder="Todos"
           options={documentTypes.map((t) => ({ value: t.id, label: t.name }))}
+        />
+      </Field>
+      <Field label="Área">
+        <Select
+          value={draft.areaId}
+          onChange={(e) => change({ areaId: e.target.value }, immediate)}
+          placeholder="Todas"
+          options={areas.map((a) => ({ value: a.id, label: a.name }))}
         />
       </Field>
       <Field label="Estado">
@@ -316,7 +332,7 @@ export function DocumentFilters({ tree, documentTypes, tags, authors, versions, 
       </div>
 
       {/* Escritorio: filtros primarios */}
-      <div className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-5">{fields(true)}</div>
+      <div className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-6">{fields(true)}</div>
       {moreOpen ? (
         <div className="hidden gap-3 rounded-xl border border-border bg-surface-2/50 p-4 md:grid md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
           {moreFields(true)}

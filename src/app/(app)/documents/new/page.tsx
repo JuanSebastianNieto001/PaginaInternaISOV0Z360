@@ -46,6 +46,7 @@ export default async function NewDocumentPage() {
           mode="create"
           tree={options.tree}
           documentTypes={options.documentTypes}
+          areas={options.areas}
           tagSuggestions={tags.map((t) => t.name)}
           settings={{
             maxFileSizeMb: settings.max_file_size_mb,

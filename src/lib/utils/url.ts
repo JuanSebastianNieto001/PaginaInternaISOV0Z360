@@ -55,6 +55,7 @@ export function parseDocumentQuery(params: SearchParams): DocumentQuery {
     categoryId: asUuid(params.category),
     subcategoryId: asUuid(params.subcategory),
     documentTypeId: asUuid(params.type),
+    areaId: asUuid(params.area),
     status: asStatus(params.status),
     version: version && /^[0-9]+(\.[0-9]+){0,2}$/.test(version) ? version : undefined,
     dateFrom: asDate(params.from),

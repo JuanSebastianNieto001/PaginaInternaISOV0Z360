@@ -46,6 +46,7 @@ export default async function EditDocumentPage({ params }: { params: Promise<{ i
         initial={doc}
         tree={options.tree}
         documentTypes={options.documentTypes}
+        areas={options.areas}
         tagSuggestions={tags.map((t) => t.name)}
         settings={{ maxFileSizeMb: settings.max_file_size_mb, allowedExtensions: settings.allowed_extensions, defaultStatus: settings.default_status }}
       />

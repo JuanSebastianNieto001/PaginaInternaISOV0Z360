@@ -130,6 +130,15 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                     <InfoRow label="Categoría">{doc.category?.name ?? "—"}</InfoRow>
                     <InfoRow label="Subcategoría">{doc.subcategory?.name ?? <span className="text-fg-subtle">—</span>}</InfoRow>
                     <InfoRow label="Tipo">{doc.document_type?.name ?? "—"}</InfoRow>
+                    <InfoRow label="Área responsable">
+                      {doc.area ? (
+                        <Link href={`/documents?area=${doc.area.id}`} className="hover:text-primary">
+                          {doc.area.name}
+                        </Link>
+                      ) : (
+                        <span className="text-fg-subtle">Sin asignar</span>
+                      )}
+                    </InfoRow>
                     <InfoRow label="Etiquetas">
                       {doc.tags.length === 0 ? (
                         <span className="text-fg-subtle">Sin etiquetas.</span>

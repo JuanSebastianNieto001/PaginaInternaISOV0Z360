@@ -13,6 +13,7 @@ export type Standard = Tables<"standards">;
 export type Category = Tables<"categories">;
 export type Subcategory = Tables<"subcategories">;
 export type DocumentType = Tables<"document_types">;
+export type Area = Tables<"areas">;
 export type DocumentRow = Tables<"documents">;
 export type DocumentVersion = Tables<"document_versions">;
 export type Tag = Tables<"tags">;
@@ -87,6 +88,7 @@ export interface DocumentListItem {
   category: Pick<Category, "id" | "code" | "name"> | null;
   subcategory: Pick<Subcategory, "id" | "code" | "name"> | null;
   document_type: Pick<DocumentType, "id" | "code" | "name"> | null;
+  area: Pick<Area, "id" | "code" | "name"> | null;
   creator: ProfileSummary | null;
   updater: ProfileSummary | null;
   tags: TagSummary[];
@@ -97,6 +99,7 @@ export interface DocumentDetail extends DocumentListItem {
   category_id: string;
   subcategory_id: string | null;
   document_type_id: string;
+  area_id: string | null;
   file_path: string;
   approved_at: string | null;
   effective_date: string | null;
@@ -148,6 +151,7 @@ export interface DocumentFilters {
   categoryId?: string;
   subcategoryId?: string;
   documentTypeId?: string;
+  areaId?: string;
   status?: DocumentStatus;
   version?: string;
   dateFrom?: string;
