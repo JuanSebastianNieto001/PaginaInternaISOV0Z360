@@ -64,6 +64,17 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   if (isAuthenticated && matches(pathname, AUTH_ONLY_PATHS)) {
+    // El JWT puede seguir siendo válido localmente y estar ya revocado en Auth
+    // (por ejemplo, si un administrador restablece la contraseña mientras la
+    // persona tiene la sesión abierta). Sin esta comprobación, /login devuelve
+    // a /dashboard, /dashboard vuelve a /login y el navegador acaba con un
+    // error de demasiadas redirecciones.
+    const { data: fresh, error } = await supabase.auth.getUser();
+    if (error || !fresh.user) {
+      await supabase.auth.signOut({ scope: "local" });
+      return response;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";

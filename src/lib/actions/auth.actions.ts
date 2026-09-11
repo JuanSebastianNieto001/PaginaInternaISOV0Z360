@@ -102,7 +102,10 @@ export async function completeForcedPasswordChange(
     return { error: "El servidor no tiene configurada SUPABASE_SERVICE_ROLE_KEY. Contacta con el administrador." };
   }
 
-  const { error: pwdError } = await admin.auth.admin.updateUserById(user.id, { password: parsed.data.password });
+  // El cambio se hace con la sesión del propio usuario. Hacerlo con
+  // service_role revoca de inmediato el token del navegador y dejaría al
+  // usuario rebotando entre /login y /dashboard.
+  const { error: pwdError } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (pwdError) {
     return {
       error: /different|same/i.test(pwdError.message)
