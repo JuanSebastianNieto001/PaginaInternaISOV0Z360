@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "seed:admin": "node scripts/seed-admin.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
-    "check": "npm run typecheck && npm run lint && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run build",
+    "db:migrate": "node scripts/apply-migrations.mjs",
+    "auth:configure": "node scripts/configure-auth.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
