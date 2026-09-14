@@ -85,12 +85,12 @@ join public.permissions p on p.code = m.permission_code
 on conflict do nothing;
 
 -- -----------------------------------------------------------------------------
--- Normas (ISO 14001 es simplemente la tercera norma de ejemplo; sustituible)
+-- Normas
 -- -----------------------------------------------------------------------------
 insert into public.standards (code, name, description, color, active, sort_order) values
   ('ISO-27001', 'ISO/IEC 27001', 'Sistema de Gestión de Seguridad de la Información (SGSI).', 'blue', true, 1),
   ('ISO-9001',  'ISO 9001',      'Sistema de Gestión de la Calidad (SGC).', 'emerald', true, 2),
-  ('ISO-14001', 'ISO 14001',     'Sistema de Gestión Ambiental (SGA). (demo) Norma de ejemplo configurable.', 'amber', true, 3)
+  ('ISO-45001', 'ISO 45001',     'Sistema de Gestión de Seguridad y Salud en el Trabajo (SG-SST).', 'amber', true, 3)
 on conflict (code) do update set
   name = excluded.name,
   description = excluded.description,
@@ -111,10 +111,11 @@ with cats (standard_code, code, name, description, sort_order) as (
     ('ISO-9001',  'SGC',   'Sistema de Gestión de la Calidad', 'Manual, política y objetivos de calidad. (demo)', 1),
     ('ISO-9001',  'PROC',  'Procesos Operativos', 'Procedimientos e instructivos de los procesos. (demo)', 2),
     ('ISO-9001',  'MEJ',   'Medición y Mejora', 'Indicadores, auditorías internas y mejora continua. (demo)', 3),
-    -- ISO 14001
-    ('ISO-14001', 'SGA',   'Sistema de Gestión Ambiental', 'Política, objetivos y alcance ambiental. (demo)', 1),
-    ('ISO-14001', 'ASP',   'Aspectos e Impactos Ambientales', 'Identificación y evaluación de aspectos ambientales. (demo)', 2),
-    ('ISO-14001', 'CUMP',  'Cumplimiento Legal Ambiental', 'Requisitos legales y otros requisitos. (demo)', 3)
+    -- ISO 45001
+    ('ISO-45001', 'SGSST', 'Sistema de Gestión de SST', 'Política, objetivos, roles y alcance del SG-SST.', 1),
+    ('ISO-45001', 'PEL',   'Peligros y Riesgos', 'Identificación de peligros, valoración de riesgos y controles.', 2),
+    ('ISO-45001', 'EMER',  'Emergencias y Respuesta', 'Preparación y respuesta ante emergencias.', 3),
+    ('ISO-45001', 'LEGS',  'Requisitos Legales de SST', 'Matriz legal y evaluación del cumplimiento en SST.', 4)
 )
 insert into public.categories (standard_id, code, name, description, sort_order)
 select s.id, c.code, c.name, c.description, c.sort_order
@@ -143,9 +144,12 @@ with subs (standard_code, category_code, code, name, sort_order) as (
     ('ISO-9001',  'PROC', 'PROD', 'Producción y Prestación del Servicio', 2),
     ('ISO-9001',  'MEJ',  'AUD',  'Auditorías Internas', 1),
     ('ISO-9001',  'MEJ',  'NC',   'No Conformidades y Acciones Correctivas', 2),
-    ('ISO-14001', 'SGA',  'POLA', 'Política Ambiental', 1),
-    ('ISO-14001', 'ASP',  'IDEN', 'Identificación de Aspectos', 1),
-    ('ISO-14001', 'CUMP', 'LEG',  'Matriz Legal', 1)
+    ('ISO-45001', 'SGSST', 'POLSST', 'Política de SST', 1),
+    ('ISO-45001', 'SGSST', 'OBJSST', 'Objetivos y Programas', 2),
+    ('ISO-45001', 'PEL',   'MPR',    'Matriz de Peligros y Riesgos', 1),
+    ('ISO-45001', 'PEL',   'INSP',   'Inspecciones y Controles', 2),
+    ('ISO-45001', 'EMER',  'PLANE',  'Plan de Emergencias', 1),
+    ('ISO-45001', 'LEGS',  'MLEG',   'Matriz Legal de SST', 1)
 )
 insert into public.subcategories (category_id, code, name, sort_order)
 select c.id, sb.code, sb.name, sb.sort_order
@@ -181,7 +185,7 @@ on conflict (code) do update set
 insert into public.tags (name, slug, color) values
   ('Seguridad',      'seguridad',      'blue'),
   ('Calidad',        'calidad',        'emerald'),
-  ('Ambiental',      'ambiental',      'amber'),
+  ('SST',            'sst',            'amber'),
   ('Confidencial',   'confidencial',   'rose'),
   ('Obligatorio',    'obligatorio',    'violet'),
   ('Auditoría 2026', 'auditoria-2026', 'slate')

@@ -75,7 +75,7 @@ Definido en `supabase/migrations/001_initial_schema.sql`.
 | --- | --- |
 | `roles`, `permissions`, `role_permissions` | RBAC configurable. Matriz editable desde `/admin/roles`. |
 | `profiles` | Perfil 1:1 con `auth.users` (nombre, avatar, rol, activo, último acceso). Creado automáticamente por trigger. |
-| `standards` | Normas (ISO 27001, ISO 9001, ISO 14001…). Dinámicas, activables. |
+| `standards` | Normas (ISO 27001, ISO 9001, ISO 45001…). Dinámicas, activables. |
 | `categories`, `subcategories` | Jerarquía **Norma → Categoría → Subcategoría**. |
 | `document_types` | Política, procedimiento, manual, registro, matriz, plan, informe… |
 | `documents` | Metadatos + archivo actual + `search_vector` (tsvector mantenido por triggers). |

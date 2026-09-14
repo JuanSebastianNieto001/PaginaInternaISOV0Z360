@@ -64,8 +64,8 @@ const DEMO_DOCS = [
   { code: "DEMO-PRO-CO-002", name: "[DEMO] Procedimiento de Evaluación de Proveedores", std: "ISO-9001", cat: "PROC", sub: "COMP", type: "procedure", status: "approved", version: "1.1", tags: ["Calidad"], desc: "Criterios de selección y reevaluación de proveedores. Documento de ejemplo." },
   { code: "DEMO-FOR-NC-001", name: "[DEMO] Formato de No Conformidad y Acción Correctiva", std: "ISO-9001", cat: "MEJ", sub: "NC", type: "form", status: "approved", version: "1.0", tags: ["Calidad"], desc: "Plantilla para el registro de no conformidades. Documento de ejemplo.", ext: "txt" },
   { code: "DEMO-INF-AI-2025", name: "[DEMO] Informe de Auditoría Interna 2025", std: "ISO-9001", cat: "MEJ", sub: "AUD", type: "report", status: "obsolete", version: "1.0", tags: ["Calidad"], desc: "Informe del ciclo anterior, reemplazado. Documento de ejemplo." },
-  { code: "DEMO-POL-AM-001", name: "[DEMO] Política Ambiental", std: "ISO-14001", cat: "SGA", sub: "POLA", type: "policy", status: "approved", version: "1.0", tags: ["Ambiental", "Obligatorio"], desc: "Compromisos ambientales de la organización. Documento de ejemplo." },
-  { code: "DEMO-MAT-LE-001", name: "[DEMO] Matriz de Requisitos Legales Ambientales", std: "ISO-14001", cat: "CUMP", sub: "LEG", type: "matrix", status: "review", version: "2.1", tags: ["Ambiental", "Auditoría 2026"], desc: "Identificación y evaluación del cumplimiento legal. Documento de ejemplo.", ext: "md" },
+  { code: "DEMO-POL-SST-001", name: "[DEMO] Política de Seguridad y Salud en el Trabajo", std: "ISO-45001", cat: "SGSST", sub: "POLSST", type: "policy", status: "approved", version: "1.0", tags: ["SST", "Obligatorio"], desc: "Compromisos de la organización en seguridad y salud en el trabajo. Documento de ejemplo." },
+  { code: "DEMO-MAT-LE-001", name: "[DEMO] Matriz de Requisitos Legales de SST", std: "ISO-45001", cat: "LEGS", sub: "MLEG", type: "matrix", status: "review", version: "2.1", tags: ["SST", "Auditoría 2026"], desc: "Identificación y evaluación del cumplimiento legal en SST. Documento de ejemplo.", ext: "md" },
 ];
 
 async function main() {
