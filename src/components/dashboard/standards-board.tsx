@@ -42,7 +42,7 @@ const THEMES: CardTheme[] = [
   {
     card: "bg-surface text-fg",
     chip: "bg-brand-100 text-brand-800",
-    icon: "bg-brand-100 text-primary",
+    icon: "bg-primary-soft text-primary",
     meta: "text-fg-subtle",
   },
   {
@@ -161,7 +161,7 @@ export function StandardsBoard({ standards }: { standards: StandardCardData[] })
             <div className="flex shrink-0 items-center gap-2">
               <Link
                 href={`/documents?standard=${selected.id}`}
-                className="inline-flex h-[34px] items-center rounded-lg border border-border-strong px-3 text-[13px] font-medium text-fg transition-colors hover:border-primary hover:bg-brand-100 hover:text-primary"
+                className="inline-flex h-[34px] items-center rounded-lg border border-border-strong px-3 text-[13px] font-medium text-fg transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary"
               >
                 Ver en repositorio
               </Link>
@@ -169,7 +169,7 @@ export function StandardsBoard({ standards }: { standards: StandardCardData[] })
                 type="button"
                 onClick={() => setSelectedId(null)}
                 aria-label="Cerrar panel de la norma"
-                className="grid size-[34px] place-items-center rounded-lg border border-border-strong text-fg-muted transition-colors hover:bg-brand-100 hover:text-primary"
+                className="grid size-[34px] place-items-center rounded-lg border border-border-strong text-fg-muted transition-colors hover:bg-primary-soft hover:text-primary"
               >
                 <X className="size-3.5" />
               </button>

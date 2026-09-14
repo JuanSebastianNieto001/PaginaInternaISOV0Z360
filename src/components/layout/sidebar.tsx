@@ -30,8 +30,8 @@ function NavLink({ item, pathname, onNavigate }: { item: NavItem; pathname: stri
       className={cn(
         "mx-2.5 my-0.5 flex items-center gap-2.5 rounded-[10px] border-l-[3px] px-3 py-[9px] text-sm transition-colors",
         active
-          ? "border-primary bg-brand-100 font-semibold text-fg"
-          : "border-transparent font-normal text-fg hover:bg-brand-100",
+          ? "border-primary bg-primary-soft font-semibold text-fg"
+          : "border-transparent font-normal text-fg hover:bg-primary-soft",
       )}
     >
       <Icon className={cn("size-4 shrink-0", active ? "text-primary" : "text-fg-subtle")} />
@@ -79,7 +79,7 @@ function SidebarContent({
             type="button"
             onClick={onClose}
             aria-label="Cerrar menú"
-            className="ml-auto grid size-8 shrink-0 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-brand-100 hover:text-primary"
+            className="ml-auto grid size-8 shrink-0 place-items-center rounded-lg text-fg-muted transition-colors hover:bg-primary-soft hover:text-primary"
           >
             <X className="size-4" />
           </button>

@@ -30,7 +30,7 @@ export function Topbar({
         type="button"
         onClick={onMenuClick}
         aria-label="Abrir menú"
-        className="-ml-2 grid size-9 place-items-center rounded-lg text-fg transition-colors hover:bg-brand-100 hover:text-primary min-[900px]:hidden"
+        className="-ml-2 grid size-9 place-items-center rounded-lg text-fg transition-colors hover:bg-primary-soft hover:text-primary min-[900px]:hidden"
       >
         <Menu className="size-[18px]" />
       </button>
@@ -51,7 +51,7 @@ export function Topbar({
         <Link
           href="/activity"
           aria-label="Actividad reciente"
-          className="grid size-[38px] shrink-0 place-items-center rounded-full border border-border-strong text-fg transition-colors hover:border-primary hover:bg-brand-100 hover:text-primary"
+          className="grid size-[38px] shrink-0 place-items-center rounded-full border border-border-strong text-fg transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary"
         >
           <Bell className="size-[17px]" />
         </Link>

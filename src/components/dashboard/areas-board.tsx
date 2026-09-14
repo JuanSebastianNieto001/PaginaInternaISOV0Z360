@@ -36,7 +36,7 @@ export function AreasBoard({ areas }: { areas: AreaCard[] }) {
               href={`/documents?area=${area.id}`}
               className={cn(
                 "flex h-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3.5 py-3 shadow-card transition-colors",
-                "hover:border-primary hover:bg-brand-100",
+                "hover:border-primary hover:bg-primary-soft",
               )}
             >
               <span className="min-w-0">
