@@ -1,10 +1,10 @@
 "use client";
 
-import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { DOCUMENT_STATUSES, DOCUMENT_STATUS_LABELS } from "@/lib/constants/documents";
+import { DOCUMENT_STATUSES, DOCUMENT_STATUS_DESCRIPTIONS } from "@/lib/constants/documents";
 import { cn } from "@/lib/utils/cn";
 import { buildQueryString } from "@/lib/utils/url";
 import type {
@@ -17,9 +17,7 @@ import type {
   TagSummary,
 } from "@/types";
 
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { Dialog } from "../ui/dialog";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
@@ -33,6 +31,8 @@ export interface DocumentFiltersProps {
   versions: string[];
   query: DocumentQuery;
   basePath?: string;
+  /** Documentos por área. Sirve para no mostrar áreas vacías de primeras. */
+  areaCounts?: Record<string, number>;
 }
 
 type Draft = {
@@ -49,6 +49,17 @@ type Draft = {
   createdBy: string;
   tagIds: string[];
 };
+
+/** Etiquetas en plural para las píldoras de estado. */
+const STATUS_CHIP_LABELS: Record<DocumentStatus, string> = {
+  draft: "Borradores",
+  review: "En revisión",
+  approved: "Aprobados",
+  obsolete: "Obsoletos",
+};
+
+/** Áreas visibles antes de pulsar "Ver todas". */
+const VISIBLE_AREAS = 12;
 
 function toDraft(q: DocumentQuery): Draft {
   return {
@@ -67,27 +78,80 @@ function toDraft(q: DocumentQuery): Draft {
   };
 }
 
-function countActive(d: Draft): number {
-  return [
-    d.standardId,
-    d.categoryId,
-    d.subcategoryId,
-    d.documentTypeId,
-    d.areaId,
-    d.status,
-    d.version,
-    d.dateFrom,
-    d.dateTo,
-    d.createdBy,
-  ].filter(Boolean).length + (d.tagIds.length > 0 ? 1 : 0);
+/** Filtros que no tienen píldora propia y por tanto necesitan resumen. */
+function countAdvanced(d: Draft): number {
+  return [d.documentTypeId, d.version, d.dateFrom, d.dateTo, d.createdBy].filter(Boolean).length + d.tagIds.length;
 }
 
-export function DocumentFilters({ tree, documentTypes, areas, tags, authors, versions, query, basePath = "/documents" }: DocumentFiltersProps) {
+function hasAnyFilter(d: Draft): boolean {
+  return Boolean(
+    d.q || d.standardId || d.categoryId || d.subcategoryId || d.areaId || d.status || countAdvanced(d) > 0,
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * Píldoras: la opción se ve sin abrir nada y se aplica con un solo clic.
+ * ------------------------------------------------------------------------- */
+function Chip({
+  selected,
+  onClick,
+  title,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      title={title}
+      className={cn(
+        "inline-flex h-8 max-w-full items-center rounded-full border px-3 text-[13px] font-medium transition-colors",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        selected
+          ? "border-primary bg-primary text-primary-fg"
+          : "border-border bg-surface text-fg-muted hover:border-primary hover:bg-primary-soft hover:text-primary",
+      )}
+    >
+      <span className="truncate">{children}</span>
+    </button>
+  );
+}
+
+function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5 min-[720px]:flex-row min-[720px]:gap-3">
+      <span className="shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-[.1em] text-fg-subtle min-[720px]:w-[86px] min-[720px]:pt-2 min-[720px]:text-right">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * Filtros del repositorio
+ * ------------------------------------------------------------------------- */
+export function DocumentFilters({
+  tree,
+  documentTypes,
+  areas,
+  tags,
+  authors,
+  versions,
+  query,
+  basePath = "/documents",
+  areaCounts,
+}: DocumentFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [draft, setDraft] = useState<Draft>(() => toDraft(query));
   const [moreOpen, setMoreOpen] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [allAreas, setAllAreas] = useState(false);
 
   // Sincroniza el borrador cuando la URL cambia desde fuera (chips, reset, navegación).
   // Patrón "derived state": se ajusta durante el render, sin efectos.
@@ -121,7 +185,7 @@ export function DocumentFilters({ tree, documentTypes, areas, tags, authors, ver
     router.replace(`${pathname || basePath}${withView}`, { scroll: false });
   };
 
-  // Búsqueda con debounce (solo escritorio; en móvil se aplica con el botón)
+  // Búsqueda con debounce; Enter aplica de inmediato.
   useEffect(() => {
     if (draft.q === (query.q ?? "")) return;
     const t = window.setTimeout(() => commit(draft), 400);
@@ -129,7 +193,7 @@ export function DocumentFilters({ tree, documentTypes, areas, tags, authors, ver
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.q]);
 
-  const change = (patch: Partial<Draft>, immediate = true) => {
+  const change = (patch: Partial<Draft>) => {
     const next: Draft = { ...draft, ...patch };
     // Coherencia jerárquica
     if ("standardId" in patch) {
@@ -138,18 +202,36 @@ export function DocumentFilters({ tree, documentTypes, areas, tags, authors, ver
     }
     if ("categoryId" in patch) next.subcategoryId = "";
     setDraft(next);
-    if (immediate) commit(next);
+    commit(next);
+  };
+
+  /** Alterna una píldora: si ya estaba puesta, vuelve a "todas". */
+  const toggle = (key: "standardId" | "categoryId" | "subcategoryId" | "areaId" | "status", value: string) => {
+    change({ [key]: draft[key] === value ? "" : value } as Partial<Draft>);
   };
 
   const reset = () => {
-    const empty = toDraft({ ...query, q: undefined, standardId: undefined, categoryId: undefined, subcategoryId: undefined, documentTypeId: undefined, areaId: undefined, status: undefined, version: undefined, dateFrom: undefined, dateTo: undefined, createdBy: undefined, tagIds: [] });
+    const empty = toDraft({
+      ...query,
+      q: undefined,
+      standardId: undefined,
+      categoryId: undefined,
+      subcategoryId: undefined,
+      documentTypeId: undefined,
+      areaId: undefined,
+      status: undefined,
+      version: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      createdBy: undefined,
+      tagIds: [],
+    });
     setDraft(empty);
     commit(empty);
-    setSheetOpen(false);
   };
 
   const categories = useMemo(
-    () => (draft.standardId ? tree.find((s) => s.id === draft.standardId)?.categories ?? [] : tree.flatMap((s) => s.categories)),
+    () => (draft.standardId ? tree.find((s) => s.id === draft.standardId)?.categories ?? [] : []),
     [tree, draft.standardId],
   );
   const subcategories = useMemo(
@@ -157,236 +239,268 @@ export function DocumentFilters({ tree, documentTypes, areas, tags, authors, ver
     [categories, draft.categoryId],
   );
 
-  const active = countActive(draft);
-  const activeChips = useMemo(() => {
+  // Las áreas sin documentos se guardan detrás de "Ver todas": en plena
+  // auditoría estorban más de lo que ayudan.
+  const { primaryAreas, restAreas } = useMemo(() => {
+    const withDocs = areaCounts ? areas.filter((a) => (areaCounts[a.id] ?? 0) > 0) : [];
+    // Sin conteos, o mientras ningún documento tenga área asignada, se
+    // muestran las primeras por orden de organigrama.
+    if (withDocs.length === 0) {
+      return { primaryAreas: areas.slice(0, VISIBLE_AREAS), restAreas: areas.slice(VISIBLE_AREAS) };
+    }
+    const withoutDocs = areas.filter((a) => (areaCounts?.[a.id] ?? 0) === 0);
+    return {
+      primaryAreas: withDocs.slice(0, VISIBLE_AREAS),
+      restAreas: [...withDocs.slice(VISIBLE_AREAS), ...withoutDocs],
+    };
+  }, [areas, areaCounts]);
+
+  const visibleAreas = allAreas ? [...primaryAreas, ...restAreas] : primaryAreas;
+  // El área seleccionada siempre debe verse, aunque esté en el grupo oculto.
+  const selectedHiddenArea =
+    draft.areaId && !visibleAreas.some((a) => a.id === draft.areaId)
+      ? areas.find((a) => a.id === draft.areaId)
+      : undefined;
+
+  const advanced = countAdvanced(draft);
+  const anyFilter = hasAnyFilter(draft);
+
+  const advancedChips = useMemo(() => {
     const chips: { key: keyof Draft; label: string; value?: string }[] = [];
-    const std = tree.find((s) => s.id === draft.standardId);
-    const cat = categories.find((c) => c.id === draft.categoryId);
-    const sub = subcategories.find((s) => s.id === draft.subcategoryId);
     const type = documentTypes.find((t) => t.id === draft.documentTypeId);
-    const area = areas.find((a) => a.id === draft.areaId);
     const author = authors.find((a) => a.id === draft.createdBy);
-    if (std) chips.push({ key: "standardId", label: std.code });
-    if (cat) chips.push({ key: "categoryId", label: cat.name });
-    if (sub) chips.push({ key: "subcategoryId", label: sub.name });
     if (type) chips.push({ key: "documentTypeId", label: type.name });
-    if (area) chips.push({ key: "areaId", label: area.name });
-    if (draft.status) chips.push({ key: "status", label: DOCUMENT_STATUS_LABELS[draft.status as DocumentStatus] });
     if (draft.version) chips.push({ key: "version", label: `v${draft.version}` });
     if (draft.dateFrom) chips.push({ key: "dateFrom", label: `Desde ${draft.dateFrom}` });
     if (draft.dateTo) chips.push({ key: "dateTo", label: `Hasta ${draft.dateTo}` });
-    if (author) chips.push({ key: "createdBy", label: author.full_name });
+    if (author) chips.push({ key: "createdBy", label: author.full_name || author.email });
     for (const id of draft.tagIds) {
       const t = tags.find((x) => x.id === id);
       if (t) chips.push({ key: "tagIds", label: `#${t.name}`, value: id });
     }
     return chips;
-  }, [draft, tree, categories, subcategories, documentTypes, areas, authors, tags]);
+  }, [draft, documentTypes, authors, tags]);
 
   const removeChip = (chip: { key: keyof Draft; value?: string }) => {
     if (chip.key === "tagIds") change({ tagIds: draft.tagIds.filter((t) => t !== chip.value) });
-    else if (chip.key === "standardId") change({ standardId: "" });
-    else if (chip.key === "categoryId") change({ categoryId: "" });
     else change({ [chip.key]: "" } as Partial<Draft>);
   };
 
-  const fields = (immediate: boolean) => (
-    <>
-      <Field label="Norma">
-        <Select
-          value={draft.standardId}
-          onChange={(e) => change({ standardId: e.target.value }, immediate)}
-          placeholder="Todas"
-          options={tree.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))}
-        />
-      </Field>
-      <Field label="Categoría">
-        <Select
-          value={draft.categoryId}
-          onChange={(e) => change({ categoryId: e.target.value }, immediate)}
-          placeholder="Todas"
-          options={categories.map((c) => ({ value: c.id, label: c.name }))}
-        />
-      </Field>
-      <Field label="Subcategoría">
-        <Select
-          value={draft.subcategoryId}
-          onChange={(e) => change({ subcategoryId: e.target.value }, immediate)}
-          placeholder="Todas"
-          disabled={!draft.categoryId}
-          options={subcategories.map((s) => ({ value: s.id, label: s.name }))}
-        />
-      </Field>
-      <Field label="Tipo">
-        <Select
-          value={draft.documentTypeId}
-          onChange={(e) => change({ documentTypeId: e.target.value }, immediate)}
-          placeholder="Todos"
-          options={documentTypes.map((t) => ({ value: t.id, label: t.name }))}
-        />
-      </Field>
-      <Field label="Área">
-        <Select
-          value={draft.areaId}
-          onChange={(e) => change({ areaId: e.target.value }, immediate)}
-          placeholder="Todas"
-          options={areas.map((a) => ({ value: a.id, label: a.name }))}
-        />
-      </Field>
-      <Field label="Estado">
-        <Select
-          value={draft.status}
-          onChange={(e) => change({ status: e.target.value }, immediate)}
-          placeholder="Todos"
-          options={DOCUMENT_STATUSES.map((s) => ({ value: s, label: DOCUMENT_STATUS_LABELS[s] }))}
-        />
-      </Field>
-    </>
-  );
-
-  const moreFields = (immediate: boolean) => (
-    <>
-      <Field label="Versión">
-        <Select
-          value={draft.version}
-          onChange={(e) => change({ version: e.target.value }, immediate)}
-          placeholder="Todas"
-          options={versions.map((v) => ({ value: v, label: `v${v}` }))}
-        />
-      </Field>
-      <Field label="Modificado desde">
-        <Input type="date" value={draft.dateFrom} max={draft.dateTo || undefined} onChange={(e) => change({ dateFrom: e.target.value }, immediate)} />
-      </Field>
-      <Field label="Modificado hasta">
-        <Input type="date" value={draft.dateTo} min={draft.dateFrom || undefined} onChange={(e) => change({ dateTo: e.target.value }, immediate)} />
-      </Field>
-      <Field label="Autor">
-        <Select
-          value={draft.createdBy}
-          onChange={(e) => change({ createdBy: e.target.value }, immediate)}
-          placeholder="Cualquiera"
-          options={authors.map((a) => ({ value: a.id, label: a.full_name || a.email }))}
-        />
-      </Field>
-      <Field label="Etiquetas" className="sm:col-span-2 lg:col-span-4">
-        <div className="flex flex-wrap gap-1.5">
-          {tags.length === 0 ? <span className="text-xs text-fg-subtle">No hay etiquetas.</span> : null}
-          {tags.map((t) => {
-            const selected = draft.tagIds.includes(t.id);
-            return (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={selected}
-                onClick={() =>
-                  change(
-                    { tagIds: selected ? draft.tagIds.filter((x) => x !== t.id) : [...draft.tagIds, t.id] },
-                    immediate,
-                  )
-                }
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                  selected ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg",
-                )}
-              >
-                #{t.name}
-              </button>
-            );
-          })}
-        </div>
-      </Field>
-    </>
-  );
-
   return (
-    <div className="space-y-3">
-      {/* Barra principal */}
+    <div className="rounded-2xl border border-border bg-surface p-3 shadow-card sm:p-4">
+      {/* Búsqueda */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-subtle" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-fg-subtle" />
           <Input
             type="search"
             value={draft.q}
             onChange={(e) => setDraft({ ...draft, q: e.target.value })}
             onKeyDown={(e) => e.key === "Enter" && commit(draft)}
-            placeholder="Buscar por nombre, código, descripción, norma, etiqueta…"
+            placeholder="Escribe el nombre o el código del documento…"
             aria-label="Buscar documentos"
-            className="pl-9"
+            className="h-11 rounded-xl pl-11 text-[15px]"
           />
         </div>
-        {/* Móvil: abre bottom sheet */}
-        <Button variant="outline" className="md:hidden" onClick={() => setSheetOpen(true)} leftIcon={<Filter className="size-4" />}>
-          Filtros
-          {active > 0 ? <Badge tone="primary" size="sm">{active}</Badge> : null}
-        </Button>
-        {/* Escritorio: más filtros */}
+        {anyFilter ? (
+          <Button variant="ghost" onClick={reset} className="shrink-0" leftIcon={<X className="size-4" />}>
+            <span className="hidden sm:inline">Limpiar</span>
+          </Button>
+        ) : null}
+      </div>
+
+      {/* Píldoras: norma → capítulo → detalle → área → estado */}
+      <div className="mt-3 space-y-2.5 border-t border-border pt-3">
+        <ChipRow label="Norma">
+          <Chip selected={!draft.standardId} onClick={() => change({ standardId: "" })}>
+            Todas
+          </Chip>
+          {tree.map((s) => (
+            <Chip
+              key={s.id}
+              selected={draft.standardId === s.id}
+              onClick={() => toggle("standardId", s.id)}
+              title={s.description ?? undefined}
+            >
+              {s.name}
+            </Chip>
+          ))}
+        </ChipRow>
+
+        {categories.length > 0 ? (
+          <ChipRow label="Capítulo">
+            <Chip selected={!draft.categoryId} onClick={() => change({ categoryId: "" })}>
+              Todos
+            </Chip>
+            {categories.map((c) => (
+              <Chip
+                key={c.id}
+                selected={draft.categoryId === c.id}
+                onClick={() => toggle("categoryId", c.id)}
+                title={c.description ?? undefined}
+              >
+                {c.name}
+              </Chip>
+            ))}
+          </ChipRow>
+        ) : null}
+
+        {subcategories.length > 0 ? (
+          <ChipRow label="Detalle">
+            <Chip selected={!draft.subcategoryId} onClick={() => change({ subcategoryId: "" })}>
+              Todos
+            </Chip>
+            {subcategories.map((s) => (
+              <Chip key={s.id} selected={draft.subcategoryId === s.id} onClick={() => toggle("subcategoryId", s.id)}>
+                {s.name}
+              </Chip>
+            ))}
+          </ChipRow>
+        ) : null}
+
+        {areas.length > 0 ? (
+          <ChipRow label="Área">
+            <Chip selected={!draft.areaId} onClick={() => change({ areaId: "" })}>
+              Todas
+            </Chip>
+            {visibleAreas.map((a) => (
+              <Chip key={a.id} selected={draft.areaId === a.id} onClick={() => toggle("areaId", a.id)}>
+                {a.name}
+              </Chip>
+            ))}
+            {selectedHiddenArea ? (
+              <Chip selected onClick={() => change({ areaId: "" })}>
+                {selectedHiddenArea.name}
+              </Chip>
+            ) : null}
+            {restAreas.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAllAreas((v) => !v)}
+                aria-expanded={allAreas}
+                className="h-8 rounded-full px-2 text-[13px] font-medium text-primary hover:underline"
+              >
+                {allAreas ? "Ver menos" : `Ver todas (${areas.length})`}
+              </button>
+            ) : null}
+          </ChipRow>
+        ) : null}
+
+        <ChipRow label="Estado">
+          <Chip selected={!draft.status} onClick={() => change({ status: "" })}>
+            Todos
+          </Chip>
+          {DOCUMENT_STATUSES.map((s) => (
+            <Chip
+              key={s}
+              selected={draft.status === s}
+              onClick={() => toggle("status", s)}
+              title={DOCUMENT_STATUS_DESCRIPTIONS[s]}
+            >
+              {STATUS_CHIP_LABELS[s]}
+            </Chip>
+          ))}
+        </ChipRow>
+      </div>
+
+      {/* Filtros poco frecuentes, plegados */}
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <Button
-          variant={moreOpen ? "secondary" : "outline"}
-          className="hidden md:inline-flex"
+          variant={moreOpen ? "secondary" : "ghost"}
+          size="sm"
           onClick={() => setMoreOpen((v) => !v)}
           leftIcon={<SlidersHorizontal className="size-4" />}
           aria-expanded={moreOpen}
         >
           Más filtros
+          {advanced > 0 ? <span className="ml-1.5 tabular-nums">({advanced})</span> : null}
         </Button>
+        {advancedChips.map((chip) => (
+          <button
+            key={`${chip.key}-${chip.value ?? chip.label}`}
+            type="button"
+            onClick={() => removeChip(chip)}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium text-fg hover:border-border-strong"
+            aria-label={`Quitar filtro ${chip.label}`}
+          >
+            {chip.label}
+            <X className="size-3 text-fg-subtle" />
+          </button>
+        ))}
       </div>
 
-      {/* Escritorio: filtros primarios */}
-      <div className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-6">{fields(true)}</div>
       {moreOpen ? (
-        <div className="hidden gap-3 rounded-xl border border-border bg-surface-2/50 p-4 md:grid md:grid-cols-2 lg:grid-cols-4 animate-fade-in">
-          {moreFields(true)}
+        <div className="mt-3 grid gap-3 rounded-xl border border-border bg-surface-2/50 p-4 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
+          <Field label="Tipo de documento">
+            <Select
+              value={draft.documentTypeId}
+              onChange={(e) => change({ documentTypeId: e.target.value })}
+              placeholder="Todos"
+              options={documentTypes.map((t) => ({ value: t.id, label: t.name }))}
+            />
+          </Field>
+          <Field label="Versión">
+            <Select
+              value={draft.version}
+              onChange={(e) => change({ version: e.target.value })}
+              placeholder="Todas"
+              options={versions.map((v) => ({ value: v, label: `v${v}` }))}
+            />
+          </Field>
+          <Field label="Modificado desde">
+            <Input
+              type="date"
+              value={draft.dateFrom}
+              max={draft.dateTo || undefined}
+              onChange={(e) => change({ dateFrom: e.target.value })}
+            />
+          </Field>
+          <Field label="Modificado hasta">
+            <Input
+              type="date"
+              value={draft.dateTo}
+              min={draft.dateFrom || undefined}
+              onChange={(e) => change({ dateTo: e.target.value })}
+            />
+          </Field>
+          <Field label="Quién lo subió">
+            <Select
+              value={draft.createdBy}
+              onChange={(e) => change({ createdBy: e.target.value })}
+              placeholder="Cualquiera"
+              options={authors.map((a) => ({ value: a.id, label: a.full_name || a.email }))}
+            />
+          </Field>
+          <Field label="Etiquetas" className="sm:col-span-2 lg:col-span-3">
+            <div className="flex flex-wrap gap-1.5">
+              {tags.length === 0 ? <span className="text-xs text-fg-subtle">No hay etiquetas.</span> : null}
+              {tags.map((t) => {
+                const selected = draft.tagIds.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() =>
+                      change({
+                        tagIds: selected ? draft.tagIds.filter((x) => x !== t.id) : [...draft.tagIds, t.id],
+                      })
+                    }
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                      selected
+                        ? "border-primary bg-primary-soft text-primary"
+                        : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg",
+                    )}
+                  >
+                    #{t.name}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
         </div>
       ) : null}
-
-      {/* Chips activos */}
-      {activeChips.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {activeChips.map((chip) => (
-            <button
-              key={`${chip.key}-${chip.value ?? chip.label}`}
-              type="button"
-              onClick={() => removeChip(chip)}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-fg hover:bg-surface-2"
-              aria-label={`Quitar filtro ${chip.label}`}
-            >
-              {chip.label}
-              <X className="size-3 text-fg-subtle" />
-            </button>
-          ))}
-          <button type="button" onClick={reset} className="text-xs font-medium text-primary hover:underline">
-            Limpiar todo
-          </button>
-        </div>
-      ) : null}
-
-      {/* Móvil: bottom sheet */}
-      <Dialog
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        title="Filtrar documentos"
-        description="Combina varios criterios para acotar el repositorio."
-        footer={
-          <>
-            <Button variant="ghost" onClick={reset}>
-              Limpiar
-            </Button>
-            <Button
-              onClick={() => {
-                commit(draft);
-                setSheetOpen(false);
-              }}
-            >
-              Aplicar filtros
-            </Button>
-          </>
-        }
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          {fields(false)}
-          {moreFields(false)}
-        </div>
-      </Dialog>
     </div>
   );
 }

@@ -160,10 +160,17 @@ export function StandardsBoard({ standards }: { standards: StandardCardData[] })
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Link
+                href={`/documents?standard=${selected.id}&status=approved`}
+                title="Documentos vigentes y de uso oficial de esta norma"
+                className="inline-flex h-[34px] items-center rounded-lg bg-primary px-3 text-[13px] font-medium text-primary-fg transition-colors hover:bg-primary-hover"
+              >
+                Sólo aprobados
+              </Link>
+              <Link
                 href={`/documents?standard=${selected.id}`}
                 className="inline-flex h-[34px] items-center rounded-lg border border-border-strong px-3 text-[13px] font-medium text-fg transition-colors hover:border-primary hover:bg-primary-soft hover:text-primary"
               >
-                Ver en repositorio
+                Ver todos
               </Link>
               <button
                 type="button"

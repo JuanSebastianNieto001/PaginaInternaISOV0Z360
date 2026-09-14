@@ -15,7 +15,7 @@ import { requireUser } from "@/lib/auth/session";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { getDistinctVersions, getDocumentAuthors, listDocuments } from "@/lib/services/documents.service";
 import { listTags } from "@/lib/services/tags.service";
-import { getDocumentFormOptions } from "@/lib/services/taxonomy.service";
+import { getAreaCounts, getDocumentFormOptions } from "@/lib/services/taxonomy.service";
 import { createClient } from "@/lib/supabase/server";
 import { formatNumber } from "@/lib/utils/format";
 import { first, parseDocumentQuery, type SearchParams } from "@/lib/utils/url";
@@ -31,20 +31,24 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
   const canCreate = can(user, PERMISSIONS.DOCUMENTS_CREATE);
   const canDownload = can(user, PERMISSIONS.DOCUMENTS_DOWNLOAD);
 
-  let result, options, tags, authors, versions;
+  let result, options, tags, authors, versions, areaCounts;
   let failed = false;
   try {
-    [result, options, tags, authors, versions] = await Promise.all([
+    [result, options, tags, authors, versions, areaCounts] = await Promise.all([
       listDocuments(supabase, query),
       getDocumentFormOptions(supabase),
       listTags(supabase),
       getDocumentAuthors(supabase),
       getDistinctVersions(supabase),
+      getAreaCounts(supabase),
     ]);
   } catch (error) {
     if (process.env.NODE_ENV === "development") console.error(error);
     failed = true;
   }
+
+  // Las áreas sin documentos se muestran sólo al pulsar "Ver todas".
+  const areaTotals = Object.fromEntries((areaCounts ?? []).map((c) => [c.area_id, c.total]));
 
   const hasFilters = Boolean(
     query.q || query.standardId || query.categoryId || query.subcategoryId || query.documentTypeId || query.areaId || query.status || query.version || query.dateFrom || query.dateTo || query.createdBy || (query.tagIds && query.tagIds.length > 0),
@@ -54,7 +58,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader
         title="Repositorio documental"
-        description="Busca, filtra y consulta toda la documentación del sistema de gestión."
+        description="Escribe el nombre del documento o marca la norma, el área y el estado para llegar a él en un clic."
         actions={canCreate ? <ButtonLink href="/documents/new" leftIcon={<Plus className="size-4" />}>Subir documento</ButtonLink> : undefined}
       />
 
@@ -71,6 +75,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
               authors={authors ?? []}
               versions={versions ?? []}
               query={query}
+              areaCounts={areaTotals}
             />
           </Suspense>
 
