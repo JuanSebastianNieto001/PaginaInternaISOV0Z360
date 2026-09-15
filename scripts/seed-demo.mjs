@@ -160,6 +160,9 @@ async function main() {
       continue;
     }
 
+    // La norma principal también vive en la relación de normas aplicables.
+    await supabase.from("document_standards").insert({ document_id: id, standard_id: standardId });
+
     await supabase.from("document_versions").insert({
       document_id: id,
       version: d.version,

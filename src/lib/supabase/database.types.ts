@@ -15,7 +15,9 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type DocumentStatus = "draft" | "review" | "approved" | "obsolete";
+export type DocumentStatus = "draft" | "review" | "pending_approval" | "approved" | "obsolete";
+
+export type InfoClassification = "public" | "internal" | "confidential" | "restricted";
 
 type Timestamps = {
   created_at: string;
@@ -310,6 +312,55 @@ export type Database = {
         };
         Relationships: [];
       };
+      processes: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          description: string | null;
+          active: boolean;
+          sort_order: number;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          code: string;
+          name: string;
+          description?: string | null;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          name?: string;
+          description?: string | null;
+          active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      document_standards: {
+        Row: {
+          document_id: string;
+          standard_id: string;
+          created_at: string;
+        };
+        Insert: {
+          document_id: string;
+          standard_id: string;
+          created_at?: string;
+        };
+        Update: {
+          document_id?: string;
+          standard_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       document_types: {
         Row: {
           id: string;
@@ -348,10 +399,13 @@ export type Database = {
           name: string;
           description: string | null;
           standard_id: string;
-          category_id: string;
+          category_id: string | null;
           subcategory_id: string | null;
           document_type_id: string;
           area_id: string | null;
+          process_id: string | null;
+          classification: InfoClassification;
+          retention: string | null;
           status: DocumentStatus;
           version: string;
           file_path: string;
@@ -372,10 +426,13 @@ export type Database = {
           name: string;
           description?: string | null;
           standard_id: string;
-          category_id: string;
+          category_id?: string | null;
           subcategory_id?: string | null;
           document_type_id: string;
           area_id?: string | null;
+          process_id?: string | null;
+          classification?: InfoClassification;
+          retention?: string | null;
           status?: DocumentStatus;
           version?: string;
           file_path: string;
@@ -397,10 +454,13 @@ export type Database = {
           name?: string;
           description?: string | null;
           standard_id?: string;
-          category_id?: string;
+          category_id?: string | null;
           subcategory_id?: string | null;
           document_type_id?: string;
           area_id?: string | null;
+          process_id?: string | null;
+          classification?: InfoClassification;
+          retention?: string | null;
           status?: DocumentStatus;
           version?: string;
           file_path?: string;
@@ -765,6 +825,10 @@ export type Database = {
           total: number;
         }[];
       };
+      get_process_counts: {
+        Args: Record<string, never>;
+        Returns: { process_id: string; total: number }[];
+      };
       get_area_counts: {
         Args: Record<string, never>;
         Returns: { area_id: string; total: number }[];
@@ -773,6 +837,7 @@ export type Database = {
     };
     Enums: {
       document_status: DocumentStatus;
+      info_classification: InfoClassification;
     };
     CompositeTypes: Record<string, never>;
   };

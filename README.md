@@ -77,7 +77,9 @@ Definido en `supabase/migrations/001_initial_schema.sql`.
 | `profiles` | Perfil 1:1 con `auth.users` (nombre, avatar, rol, activo, último acceso). Creado automáticamente por trigger. |
 | `standards` | Normas (ISO 27001, ISO 9001, ISO 45001…). Dinámicas, activables. |
 | `categories`, `subcategories` | Jerarquía **Norma → Categoría → Subcategoría**. |
-| `document_types` | Política, procedimiento, manual, registro, matriz, plan, informe… |
+| `document_types` | Los nueve tipos del listado maestro: Manual (MGD), Política (POL), Procedimiento (PRC), Instructivo (INS), Formato (FTM), Registro (REG), Plan (PLN), Anexo (ANX), Matriz (MTZ). |
+| `processes` | Procesos del SGI (ADM, MKT, OPE, FIN, RRHH, SINF, SGI, LEG, AUD). Es la columna "Proceso / Área" del listado maestro. |
+| `document_standards` | Normas que aplican a cada documento (N:N). Un documento puede ser de una norma, de dos o de las tres. |
 | `documents` | Metadatos + archivo actual + `search_vector` (tsvector mantenido por triggers). |
 | `document_versions` | Histórico inmutable: cada versión conserva su archivo y resumen de cambio. |
 | `tags`, `document_tags` | Etiquetado libre. |
@@ -184,6 +186,9 @@ supabase/migrations/004_seed.sql             # roles, permisos, normas, categor�
 supabase/migrations/005_force_password_change.sql  # cambio de contraseña obligatorio
 supabase/migrations/006_rol_colaborador.sql        # rol COLABORADOR (sube documentos, no edita ni aprueba)
 supabase/migrations/007_areas.sql                  # áreas responsables (dimensión global) + conteo por área
+supabase/migrations/008_iso_45001.sql               # la tercera norma es ISO 45001, no ISO 14001
+supabase/migrations/009_estado_en_aprobacion.sql    # estado "En aprobación" del listado maestro
+supabase/migrations/010_listado_maestro.sql         # normas N:N, procesos, clasificación de la información y retención
 ```
 
 Todas son idempotentes (`if not exists`, `on conflict`), pueden volver a ejecutarse.
@@ -277,6 +282,9 @@ Notas del plan gratuito: Vercel limita el body de las funciones a 4,5 MB, por es
 | Versionado | Historial inmutable con archivo por versión, resumen de cambio, autor y descarga de versiones anteriores. |
 | Recientes / Favoritos | Por usuario; vistos, añadidos y modificados. |
 | Normas | Árbol Norma → Categoría → Subcategoría con conteos y enlaces filtrados. |
+| Normas aplicables | Un documento puede aplicar a varias normas a la vez. Se marcan al subirlo y aparece bajo todas ellas al filtrar, en la búsqueda libre y en el reparto por norma del dashboard. |
+| Procesos del SGI | De qué proceso trata el documento (ADM, MKT, OPE, FIN, RRHH, SINF, SGI, LEG, AUD). Obligatorio al subir, filtro principal del repositorio y bloque propio en el dashboard. Se administran en `/admin/processes`. |
+| Clasificación y retención | Clasificación de la información de ISO 27001 (Pública, Uso interno, Confidencial, Restringida) y tiempo de conservación, ambos del listado maestro. |
 | Áreas responsables | Cargo o área dueña del documento (CEO, Contabilidad, Líder ISO, Formación…). Dimensión **global**, transversal a las normas: se elige al subir, filtra el repositorio, entra en la búsqueda libre y tiene su propio bloque en el dashboard. Se administran en `/admin/areas`. |
 | Actividad | Timeline paginado con filtros; visibilidad según `audit.read`. |
 | Administración | Usuarios (alta, edición, activar/desactivar, rol), matriz de permisos, normas, categorías, etiquetas y tipos, documentos, auditoría, ajustes globales. |

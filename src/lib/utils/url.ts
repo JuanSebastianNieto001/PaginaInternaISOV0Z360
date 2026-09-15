@@ -1,5 +1,5 @@
-import { DEFAULT_PAGE_SIZE, DOCUMENT_STATUSES, MAX_PAGE_SIZE } from "@/lib/constants/documents";
-import type { DocumentQuery, DocumentSortField, DocumentStatus, SortDirection } from "@/types";
+import { DEFAULT_PAGE_SIZE, DOCUMENT_STATUSES, INFO_CLASSIFICATIONS, MAX_PAGE_SIZE } from "@/lib/constants/documents";
+import type { DocumentQuery, DocumentSortField, DocumentStatus, InfoClassification, SortDirection } from "@/types";
 
 import { normalizeSearchInput } from "./search";
 
@@ -35,6 +35,11 @@ export function asStatus(value: string | string[] | undefined): DocumentStatus |
   return v && (DOCUMENT_STATUSES as string[]).includes(v) ? (v as DocumentStatus) : undefined;
 }
 
+export function asClassification(value: string | string[] | undefined): InfoClassification | undefined {
+  const v = first(value);
+  return v && (INFO_CLASSIFICATIONS as string[]).includes(v) ? (v as InfoClassification) : undefined;
+}
+
 export function asDate(value: string | string[] | undefined): string | undefined {
   const v = first(value);
   return v && DATE_RE.test(v) ? v : undefined;
@@ -56,6 +61,8 @@ export function parseDocumentQuery(params: SearchParams): DocumentQuery {
     subcategoryId: asUuid(params.subcategory),
     documentTypeId: asUuid(params.type),
     areaId: asUuid(params.area),
+    processId: asUuid(params.process),
+    classification: asClassification(params.class),
     status: asStatus(params.status),
     version: version && /^[0-9]+(\.[0-9]+){0,2}$/.test(version) ? version : undefined,
     dateFrom: asDate(params.from),

@@ -1,9 +1,9 @@
-import { FileText, Plus, Search } from "lucide-react";
+import { Building2, FileText, Plus, Search, Workflow } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActivityList } from "@/components/dashboard/activity-list";
-import { AreasBoard, type AreaCard } from "@/components/dashboard/areas-board";
+import { TaxonomyBoard, type TaxonomyBoardCard } from "@/components/dashboard/taxonomy-board";
 import { StandardsBoard, type StandardCardData } from "@/components/dashboard/standards-board";
 import { FileExtBox } from "@/components/documents/file-ext-box";
 import { StatusBadge } from "@/components/documents/status-badge";
@@ -16,11 +16,17 @@ import { PERMISSIONS } from "@/lib/constants/permissions";
 import { getRecentActivity } from "@/lib/services/audit.service";
 import { getDashboardStats } from "@/lib/services/dashboard.service";
 import { getRecentlyAdded } from "@/lib/services/documents.service";
-import { getAreaCounts, listAreas, listStandards } from "@/lib/services/taxonomy.service";
+import {
+  getAreaCounts,
+  getProcessCounts,
+  listAreas,
+  listProcesses,
+  listStandards,
+} from "@/lib/services/taxonomy.service";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/cn";
 import { formatNumber, formatRelative, greeting, longDateLabel } from "@/lib/utils/format";
-import type { Area, AuditLogItem, DashboardStats, DocumentListItem, Standard } from "@/types";
+import type { Area, AuditLogItem, DashboardStats, DocumentListItem, Process, Standard } from "@/types";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -146,16 +152,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   let standards: Standard[] = [];
   let areas: Area[] = [];
   let areaCounts: { area_id: string; total: number }[] = [];
+  let processes: Process[] = [];
+  let processCounts: { process_id: string; total: number }[] = [];
   let added: DocumentListItem[] = [];
   let activity: AuditLogItem[] = [];
   let failed = false;
 
   try {
-    [stats, standards, areas, areaCounts, added, activity] = await Promise.all([
+    [stats, standards, areas, areaCounts, processes, processCounts, added, activity] = await Promise.all([
       getDashboardStats(supabase),
       listStandards(supabase),
       listAreas(supabase),
       getAreaCounts(supabase),
+      listProcesses(supabase),
+      getProcessCounts(supabase),
       getRecentlyAdded(supabase, 5),
       getRecentActivity(supabase, 6),
     ]);
@@ -179,7 +189,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }));
 
   const documentsByArea = new Map(areaCounts.map((c) => [c.area_id, c.total]));
-  const areaCards: AreaCard[] = areas.map((area) => ({ area, total: documentsByArea.get(area.id) ?? 0 }));
+  const areaCards: TaxonomyBoardCard[] = areas.map((area) => ({
+    id: area.id,
+    name: area.name,
+    total: documentsByArea.get(area.id) ?? 0,
+  }));
+
+  const documentsByProcess = new Map(processCounts.map((c) => [c.process_id, c.total]));
+  const processCards: TaxonomyBoardCard[] = processes.map((process) => ({
+    id: process.id,
+    name: process.name,
+    total: documentsByProcess.get(process.id) ?? 0,
+  }));
 
   return (
     <>
@@ -241,7 +262,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <>
           {standardCards.length > 0 ? <StandardsBoard standards={standardCards} /> : null}
 
-          <AreasBoard areas={areaCards} />
+          <TaxonomyBoard title="Procesos del SGI" icon={Workflow} param="process" items={processCards} />
+
+          <TaxonomyBoard title="Cargos responsables" icon={Building2} param="area" items={areaCards} />
 
           <StatsCard stats={stats} />
 

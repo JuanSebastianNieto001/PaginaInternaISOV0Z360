@@ -18,7 +18,7 @@ import { ErrorState, NotFoundState } from "@/components/ui/states";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { can } from "@/lib/auth/permissions";
 import { requireUser } from "@/lib/auth/session";
-import { DOCUMENT_STATUS_DESCRIPTIONS } from "@/lib/constants/documents";
+import { DOCUMENT_STATUS_DESCRIPTIONS, INFO_CLASSIFICATION_LABELS } from "@/lib/constants/documents";
 import { PERMISSIONS } from "@/lib/constants/permissions";
 import { getDocumentActivity } from "@/lib/services/audit.service";
 import { getDocumentById, getDocumentVersions } from "@/lib/services/documents.service";
@@ -104,7 +104,9 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={doc.status} />
           <Badge tone="outline" className="font-mono">v{doc.version}</Badge>
-          {doc.standard ? <Badge color={doc.standard.color}>{doc.standard.code}</Badge> : null}
+          {(doc.standards.length > 0 ? doc.standards : doc.standard ? [doc.standard] : []).map((s) => (
+            <Badge key={s.id} color={s.color}>{s.code}</Badge>
+          ))}
           {doc.document_type ? <Badge tone="outline">{doc.document_type.name}</Badge> : null}
           <span className="text-xs text-fg-subtle">{DOCUMENT_STATUS_DESCRIPTIONS[doc.status]}</span>
         </div>
@@ -126,11 +128,38 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
                 <CardContent>
                   <dl className="divide-y divide-border">
                     <InfoRow label="Descripción">{doc.description ? <p className="whitespace-pre-line leading-relaxed">{doc.description}</p> : <span className="text-fg-subtle">Sin descripción.</span>}</InfoRow>
-                    <InfoRow label="Norma">{doc.standard ? <Link href={`/documents?standard=${doc.standard.id}`} className="hover:text-primary">{doc.standard.code} · {doc.standard.name}</Link> : "—"}</InfoRow>
-                    <InfoRow label="Categoría">{doc.category?.name ?? "—"}</InfoRow>
-                    <InfoRow label="Subcategoría">{doc.subcategory?.name ?? <span className="text-fg-subtle">—</span>}</InfoRow>
+                    <InfoRow label="Normas que aplican">
+                      {doc.standards.length === 0 ? (
+                        <span className="text-fg-subtle">—</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {doc.standards.map((s) => (
+                            <Link key={s.id} href={`/documents?standard=${s.id}`}>
+                              <Badge color={s.color} className="hover:opacity-80">{s.name}</Badge>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </InfoRow>
                     <InfoRow label="Tipo">{doc.document_type?.name ?? "—"}</InfoRow>
-                    <InfoRow label="Área responsable">
+                    <InfoRow label="Proceso">
+                      {doc.process ? (
+                        <Link href={`/documents?process=${doc.process.id}`} className="hover:text-primary">
+                          {doc.process.name}
+                        </Link>
+                      ) : (
+                        <span className="text-fg-subtle">Sin proceso</span>
+                      )}
+                    </InfoRow>
+                    <InfoRow label="Clasificación">
+                      <Link href={`/documents?class=${doc.classification}`} className="hover:text-primary">
+                        {INFO_CLASSIFICATION_LABELS[doc.classification]}
+                      </Link>
+                    </InfoRow>
+                    <InfoRow label="Retención">{doc.retention ?? <span className="text-fg-subtle">Sin definir</span>}</InfoRow>
+                    <InfoRow label="Capítulo">{doc.category?.name ?? <span className="text-fg-subtle">—</span>}</InfoRow>
+                    <InfoRow label="Detalle">{doc.subcategory?.name ?? <span className="text-fg-subtle">—</span>}</InfoRow>
+                    <InfoRow label="Cargo responsable">
                       {doc.area ? (
                         <Link href={`/documents?area=${doc.area.id}`} className="hover:text-primary">
                           {doc.area.name}

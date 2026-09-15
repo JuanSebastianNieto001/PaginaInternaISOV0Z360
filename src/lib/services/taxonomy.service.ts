@@ -4,6 +4,7 @@ import type {
   Category,
   CategoryWithSubcategories,
   DocumentType,
+  Process,
   Standard,
   StandardWithCategories,
   Subcategory,
@@ -124,6 +125,30 @@ export async function getAreaCounts(supabase: TypedSupabaseClient): Promise<Area
   return (data ?? []).map((r) => ({ area_id: r.area_id, total: Number(r.total) }));
 }
 
+/** Procesos del SGI (ADM, MKT, OPE, FIN, RRHH, SINF, SGI, LEG, AUD). */
+export async function listProcesses(
+  supabase: TypedSupabaseClient,
+  { includeInactive = false }: TaxonomyOptions = {},
+): Promise<Process[]> {
+  let q = supabase.from("processes").select("*").order("sort_order").order("name");
+  if (!includeInactive) q = q.eq("active", true);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export interface ProcessCount {
+  process_id: string;
+  total: number;
+}
+
+/** Conteo de documentos por proceso. */
+export async function getProcessCounts(supabase: TypedSupabaseClient): Promise<ProcessCount[]> {
+  const { data, error } = await supabase.rpc("get_process_counts");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ process_id: r.process_id, total: Number(r.total) }));
+}
+
 export interface TaxonomyCount {
   standard_id: string;
   category_id: string;
@@ -140,10 +165,11 @@ export async function getTaxonomyCounts(supabase: TypedSupabaseClient): Promise<
 
 /** Datos necesarios para los formularios de documento y los filtros. */
 export async function getDocumentFormOptions(supabase: TypedSupabaseClient) {
-  const [tree, documentTypes, areas] = await Promise.all([
+  const [tree, documentTypes, areas, processes] = await Promise.all([
     getTaxonomyTree(supabase),
     listDocumentTypes(supabase),
     listAreas(supabase),
+    listProcesses(supabase),
   ]);
-  return { tree, documentTypes, areas };
+  return { tree, documentTypes, areas, processes };
 }

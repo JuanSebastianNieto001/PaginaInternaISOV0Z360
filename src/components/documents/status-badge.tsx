@@ -5,6 +5,7 @@ import type { DocumentStatus } from "@/types";
 /** Píldoras de estado del sistema de diseño (azul marino → aprobado). */
 const STYLES: Record<DocumentStatus, string> = {
   approved: "bg-brand-900 text-white border-transparent",
+  pending_approval: "bg-brand-400 text-brand-900 border-transparent",
   review: "bg-brand-100 text-brand-800 border-transparent",
   draft: "bg-surface-3 text-[#33405a] border-transparent dark:text-fg",
   obsolete: "bg-transparent text-fg-subtle border-border-strong",

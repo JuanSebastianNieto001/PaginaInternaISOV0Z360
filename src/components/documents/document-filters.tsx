@@ -4,14 +4,21 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { DOCUMENT_STATUSES, DOCUMENT_STATUS_DESCRIPTIONS } from "@/lib/constants/documents";
+import {
+  DOCUMENT_STATUSES,
+  DOCUMENT_STATUS_DESCRIPTIONS,
+  DOCUMENT_STATUS_PLURALS,
+  INFO_CLASSIFICATIONS,
+  INFO_CLASSIFICATION_DESCRIPTIONS,
+  INFO_CLASSIFICATION_LABELS,
+} from "@/lib/constants/documents";
 import { cn } from "@/lib/utils/cn";
 import { buildQueryString } from "@/lib/utils/url";
 import type {
   Area,
   DocumentQuery,
-  DocumentStatus,
   DocumentType,
+  Process,
   ProfileSummary,
   StandardWithCategories,
   TagSummary,
@@ -26,6 +33,7 @@ export interface DocumentFiltersProps {
   tree: StandardWithCategories[];
   documentTypes: DocumentType[];
   areas: Area[];
+  processes: Process[];
   tags: TagSummary[];
   authors: ProfileSummary[];
   versions: string[];
@@ -42,20 +50,14 @@ type Draft = {
   subcategoryId: string;
   documentTypeId: string;
   areaId: string;
+  processId: string;
+  classification: string;
   status: string;
   version: string;
   dateFrom: string;
   dateTo: string;
   createdBy: string;
   tagIds: string[];
-};
-
-/** Etiquetas en plural para las píldoras de estado. */
-const STATUS_CHIP_LABELS: Record<DocumentStatus, string> = {
-  draft: "Borradores",
-  review: "En revisión",
-  approved: "Aprobados",
-  obsolete: "Obsoletos",
 };
 
 /** Áreas visibles antes de pulsar "Ver todas". */
@@ -69,6 +71,8 @@ function toDraft(q: DocumentQuery): Draft {
     subcategoryId: q.subcategoryId ?? "",
     documentTypeId: q.documentTypeId ?? "",
     areaId: q.areaId ?? "",
+    processId: q.processId ?? "",
+    classification: q.classification ?? "",
     status: q.status ?? "",
     version: q.version ?? "",
     dateFrom: q.dateFrom ?? "",
@@ -85,7 +89,15 @@ function countAdvanced(d: Draft): number {
 
 function hasAnyFilter(d: Draft): boolean {
   return Boolean(
-    d.q || d.standardId || d.categoryId || d.subcategoryId || d.areaId || d.status || countAdvanced(d) > 0,
+    d.q ||
+      d.standardId ||
+      d.categoryId ||
+      d.subcategoryId ||
+      d.areaId ||
+      d.processId ||
+      d.classification ||
+      d.status ||
+      countAdvanced(d) > 0,
   );
 }
 
@@ -140,6 +152,7 @@ export function DocumentFilters({
   tree,
   documentTypes,
   areas,
+  processes,
   tags,
   authors,
   versions,
@@ -170,6 +183,8 @@ export function DocumentFilters({
       subcategory: next.subcategoryId || undefined,
       type: next.documentTypeId || undefined,
       area: next.areaId || undefined,
+      process: next.processId || undefined,
+      class: next.classification || undefined,
       status: next.status || undefined,
       version: next.version || undefined,
       from: next.dateFrom || undefined,
@@ -206,7 +221,10 @@ export function DocumentFilters({
   };
 
   /** Alterna una píldora: si ya estaba puesta, vuelve a "todas". */
-  const toggle = (key: "standardId" | "categoryId" | "subcategoryId" | "areaId" | "status", value: string) => {
+  const toggle = (
+    key: "standardId" | "categoryId" | "subcategoryId" | "areaId" | "processId" | "classification" | "status",
+    value: string,
+  ) => {
     change({ [key]: draft[key] === value ? "" : value } as Partial<Draft>);
   };
 
@@ -219,6 +237,8 @@ export function DocumentFilters({
       subcategoryId: undefined,
       documentTypeId: undefined,
       areaId: undefined,
+      processId: undefined,
+      classification: undefined,
       status: undefined,
       version: undefined,
       dateFrom: undefined,
@@ -358,8 +378,26 @@ export function DocumentFilters({
           </ChipRow>
         ) : null}
 
+        {processes.length > 0 ? (
+          <ChipRow label="Proceso">
+            <Chip selected={!draft.processId} onClick={() => change({ processId: "" })}>
+              Todos
+            </Chip>
+            {processes.map((p) => (
+              <Chip
+                key={p.id}
+                selected={draft.processId === p.id}
+                onClick={() => toggle("processId", p.id)}
+                title={p.description ?? undefined}
+              >
+                {p.code}
+              </Chip>
+            ))}
+          </ChipRow>
+        ) : null}
+
         {areas.length > 0 ? (
-          <ChipRow label="Área">
+          <ChipRow label="Cargo">
             <Chip selected={!draft.areaId} onClick={() => change({ areaId: "" })}>
               Todas
             </Chip>
@@ -397,7 +435,23 @@ export function DocumentFilters({
               onClick={() => toggle("status", s)}
               title={DOCUMENT_STATUS_DESCRIPTIONS[s]}
             >
-              {STATUS_CHIP_LABELS[s]}
+              {DOCUMENT_STATUS_PLURALS[s]}
+            </Chip>
+          ))}
+        </ChipRow>
+
+        <ChipRow label="Acceso">
+          <Chip selected={!draft.classification} onClick={() => change({ classification: "" })}>
+            Todos
+          </Chip>
+          {INFO_CLASSIFICATIONS.map((c) => (
+            <Chip
+              key={c}
+              selected={draft.classification === c}
+              onClick={() => toggle("classification", c)}
+              title={INFO_CLASSIFICATION_DESCRIPTIONS[c]}
+            >
+              {INFO_CLASSIFICATION_LABELS[c]}
             </Chip>
           ))}
         </ChipRow>

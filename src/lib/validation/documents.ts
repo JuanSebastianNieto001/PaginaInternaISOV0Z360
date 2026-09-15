@@ -1,10 +1,12 @@
 import { z } from "zod";
 
-import { DOCUMENT_STATUSES, VERSION_REGEX } from "@/lib/constants/documents";
+import { DOCUMENT_STATUSES, INFO_CLASSIFICATIONS, VERSION_REGEX } from "@/lib/constants/documents";
 
 const uuid = z.string().uuid("Identificador inválido.");
 
 export const documentStatusSchema = z.enum(DOCUMENT_STATUSES);
+
+export const classificationSchema = z.enum(INFO_CLASSIFICATIONS);
 
 export const versionSchema = z
   .string()
@@ -33,11 +35,20 @@ const documentBase = {
     .max(60)
     .regex(/^[A-Za-z0-9._\-\/ ]+$/, "El código solo admite letras, números, puntos, guiones y barras."),
   description: z.string().trim().max(2000).optional().or(z.literal("")),
-  standardId: uuid,
-  categoryId: uuid,
+  // Un documento puede aplicar a una norma, a dos o a las tres. La primera de
+  // la lista queda como norma principal en documents.standard_id.
+  standardIds: z
+    .array(uuid)
+    .min(1, "Elige al menos una norma.")
+    .max(10)
+    .refine((ids) => new Set(ids).size === ids.length, "Hay normas repetidas."),
+  categoryId: uuid.optional().or(z.literal("")),
   subcategoryId: uuid.optional().or(z.literal("")),
   documentTypeId: uuid,
   areaId: uuid.optional().or(z.literal("")),
+  processId: uuid,
+  classification: classificationSchema,
+  retention: z.string().trim().max(120).optional().or(z.literal("")),
   status: documentStatusSchema,
   version: versionSchema,
   tags: tagsSchema,

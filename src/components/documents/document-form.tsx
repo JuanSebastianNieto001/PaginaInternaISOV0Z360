@@ -5,11 +5,27 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import { createDocument, updateDocument } from "@/lib/actions/documents.actions";
-import { DOCUMENT_STATUSES, DOCUMENT_STATUS_DESCRIPTIONS, DOCUMENT_STATUS_LABELS } from "@/lib/constants/documents";
+import {
+  DOCUMENT_STATUSES,
+  DOCUMENT_STATUS_DESCRIPTIONS,
+  DOCUMENT_STATUS_LABELS,
+  INFO_CLASSIFICATIONS,
+  INFO_CLASSIFICATION_DESCRIPTIONS,
+  INFO_CLASSIFICATION_LABELS,
+} from "@/lib/constants/documents";
 import { removeUploadedFile, uploadFileWithProgress } from "@/lib/storage/upload";
 import { buildStoragePath, getExtension, guessMimeType } from "@/lib/utils/files";
 import { createDocumentSchema, updateDocumentSchema } from "@/lib/validation/documents";
-import type { Area, DocumentDetail, DocumentStatus, DocumentType, StandardWithCategories } from "@/types";
+import { cn } from "@/lib/utils/cn";
+import type {
+  Area,
+  DocumentDetail,
+  DocumentStatus,
+  DocumentType,
+  InfoClassification,
+  Process,
+  StandardWithCategories,
+} from "@/types";
 
 import { useToast } from "../providers/toast-provider";
 import { Button, ButtonLink } from "../ui/button";
@@ -25,6 +41,7 @@ export interface DocumentFormProps {
   tree: StandardWithCategories[];
   documentTypes: DocumentType[];
   areas: Area[];
+  processes: Process[];
   tagSuggestions: string[];
   settings: { maxFileSizeMb: number; allowedExtensions: string[]; defaultStatus: DocumentStatus };
   initial?: DocumentDetail;
@@ -34,11 +51,15 @@ interface FormValues {
   name: string;
   code: string;
   description: string;
-  standardId: string;
+  /** Normas que aplican. La primera es la principal. */
+  standardIds: string[];
   categoryId: string;
   subcategoryId: string;
   documentTypeId: string;
   areaId: string;
+  processId: string;
+  classification: InfoClassification;
+  retention: string;
   status: DocumentStatus;
   version: string;
   tags: string[];
@@ -46,7 +67,7 @@ interface FormValues {
   reviewDate: string;
 }
 
-export function DocumentForm({ mode, tree, documentTypes, areas, tagSuggestions, settings, initial }: DocumentFormProps) {
+export function DocumentForm({ mode, tree, documentTypes, areas, processes, tagSuggestions, settings, initial }: DocumentFormProps) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
@@ -60,11 +81,14 @@ export function DocumentForm({ mode, tree, documentTypes, areas, tagSuggestions,
     name: initial?.name ?? "",
     code: initial?.code ?? "",
     description: initial?.description ?? "",
-    standardId: initial?.standard_id ?? "",
+    standardIds: tree.filter((s) => (initial?.standards ?? []).some((x) => x.id === s.id)).map((s) => s.id),
     categoryId: initial?.category_id ?? "",
     subcategoryId: initial?.subcategory_id ?? "",
     documentTypeId: initial?.document_type_id ?? "",
     areaId: initial?.area_id ?? "",
+    processId: initial?.process_id ?? "",
+    classification: initial?.classification ?? "internal",
+    retention: initial?.retention ?? "",
     status: initial?.status ?? settings.defaultStatus,
     version: initial?.version ?? "1.0",
     tags: initial?.tags.map((t) => t.name) ?? [],
@@ -75,7 +99,8 @@ export function DocumentForm({ mode, tree, documentTypes, areas, tagSuggestions,
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setValues((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === "standardId") {
+      // Cambiar la norma principal invalida el capítulo elegido.
+      if (key === "standardIds" && next.standardIds[0] !== prev.standardIds[0]) {
         next.categoryId = "";
         next.subcategoryId = "";
       }
@@ -90,7 +115,22 @@ export function DocumentForm({ mode, tree, documentTypes, areas, tagSuggestions,
     });
   };
 
-  const categories = useMemo(() => tree.find((s) => s.id === values.standardId)?.categories ?? [], [tree, values.standardId]);
+  const principalStandardId = values.standardIds[0] ?? "";
+  const categories = useMemo(
+    () => tree.find((s) => s.id === principalStandardId)?.categories ?? [],
+    [tree, principalStandardId],
+  );
+
+  /** Alterna una norma conservando el orden del catálogo. */
+  const toggleStandard = (id: string) => {
+    const chosen = new Set(values.standardIds);
+    if (chosen.has(id)) chosen.delete(id);
+    else chosen.add(id);
+    set(
+      "standardIds",
+      tree.filter((s) => chosen.has(s.id)).map((s) => s.id),
+    );
+  };
   const subcategories = useMemo(() => categories.find((c) => c.id === values.categoryId)?.subcategories ?? [], [categories, values.categoryId]);
 
   const onFileChange = (f: File | null) => {
@@ -240,25 +280,77 @@ export function DocumentForm({ mode, tree, documentTypes, areas, tagSuggestions,
         </Card>
 
         <Card>
-          <CardHeader title="Clasificación" description="Norma, categoría, tipo y área responsable. Permiten filtrar y organizar el repositorio." />
+          <CardHeader
+            title="Clasificación del SGI"
+            description="Los mismos campos del listado maestro. Son los que luego permiten filtrar en el repositorio."
+          />
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <Field label="Norma" htmlFor="standardId" required error={fieldErrors.standardId}>
-              <Select id="standardId" value={values.standardId} onChange={(e) => set("standardId", e.target.value)} placeholder="Selecciona una norma" options={tree.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))} disabled={busy} invalid={Boolean(fieldErrors.standardId)} />
+            <Field
+              label="Normas que aplican"
+              required
+              error={fieldErrors.standardIds}
+              hint="Marca todas las que apliquen. Un mismo documento puede servir para dos normas o para las tres."
+              className="sm:col-span-2"
+            >
+              <div className="flex flex-wrap gap-2">
+                {tree.map((s) => {
+                  const selected = values.standardIds.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-pressed={selected}
+                      disabled={busy}
+                      onClick={() => toggleStandard(s.id)}
+                      className={cn(
+                        "inline-flex h-9 items-center rounded-full border px-4 text-sm font-medium transition-colors",
+                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60",
+                        selected
+                          ? "border-primary bg-primary text-primary-fg"
+                          : "border-border bg-surface text-fg-muted hover:border-primary hover:bg-primary-soft hover:text-primary",
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
             </Field>
             <Field label="Tipo de documento" htmlFor="documentTypeId" required error={fieldErrors.documentTypeId}>
               <Select id="documentTypeId" value={values.documentTypeId} onChange={(e) => set("documentTypeId", e.target.value)} placeholder="Selecciona un tipo" options={documentTypes.map((t) => ({ value: t.id, label: t.name }))} disabled={busy} invalid={Boolean(fieldErrors.documentTypeId)} />
             </Field>
-            <Field label="Categoría" htmlFor="categoryId" required error={fieldErrors.categoryId}>
-              <Select id="categoryId" value={values.categoryId} onChange={(e) => set("categoryId", e.target.value)} placeholder={values.standardId ? "Selecciona una categoría" : "Primero elige la norma"} options={categories.map((c) => ({ value: c.id, label: c.name }))} disabled={busy || !values.standardId} invalid={Boolean(fieldErrors.categoryId)} />
+            <Field label="Proceso" htmlFor="processId" required error={fieldErrors.processId} hint="De qué proceso del SGI trata el documento.">
+              <Select id="processId" value={values.processId} onChange={(e) => set("processId", e.target.value)} placeholder="Selecciona un proceso" options={processes.map((p) => ({ value: p.id, label: p.name }))} disabled={busy} invalid={Boolean(fieldErrors.processId)} />
             </Field>
-            <Field label="Subcategoría" htmlFor="subcategoryId" error={fieldErrors.subcategoryId}>
-              <Select id="subcategoryId" value={values.subcategoryId} onChange={(e) => set("subcategoryId", e.target.value)} placeholder={values.categoryId ? "Sin subcategoría" : "Primero elige la categoría"} options={subcategories.map((s) => ({ value: s.id, label: s.name }))} disabled={busy || !values.categoryId || subcategories.length === 0} />
+            <Field
+              label="Clasificación de la información"
+              htmlFor="classification"
+              required
+              error={fieldErrors.classification}
+              hint={INFO_CLASSIFICATION_DESCRIPTIONS[values.classification]}
+            >
+              <Select id="classification" value={values.classification} onChange={(e) => set("classification", e.target.value as InfoClassification)} options={INFO_CLASSIFICATIONS.map((c) => ({ value: c, label: INFO_CLASSIFICATION_LABELS[c] }))} disabled={busy} />
             </Field>
-            <Field label="Área responsable" htmlFor="areaId" error={fieldErrors.areaId} hint="Cargo o área dueña del documento." className="sm:col-span-2">
-              <Select id="areaId" value={values.areaId} onChange={(e) => set("areaId", e.target.value)} placeholder="Sin área asignada" options={areas.map((a) => ({ value: a.id, label: a.name }))} disabled={busy} invalid={Boolean(fieldErrors.areaId)} />
+            <Field label="Cargo responsable" htmlFor="areaId" error={fieldErrors.areaId} hint="Quién custodia el documento. Opcional.">
+              <Select id="areaId" value={values.areaId} onChange={(e) => set("areaId", e.target.value)} placeholder="Sin cargo asignado" options={areas.map((a) => ({ value: a.id, label: a.name }))} disabled={busy} invalid={Boolean(fieldErrors.areaId)} />
             </Field>
             <Field label="Etiquetas" htmlFor="tags" error={fieldErrors.tags} hint="Pulsa Enter o coma para añadir. Máximo 15." className="sm:col-span-2">
               <TagInput id="tags" value={values.tags} onChange={(t) => set("tags", t)} suggestions={tagSuggestions} disabled={busy} />
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Capítulo de la norma"
+            description="Opcional. Sólo si quieres afinar dentro de la norma principal; el listado maestro no lo exige."
+          />
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <Field label="Capítulo" htmlFor="categoryId" error={fieldErrors.categoryId}>
+              <Select id="categoryId" value={values.categoryId} onChange={(e) => set("categoryId", e.target.value)} placeholder={principalStandardId ? "Sin capítulo" : "Primero elige la norma"} options={categories.map((c) => ({ value: c.id, label: c.name }))} disabled={busy || !principalStandardId} invalid={Boolean(fieldErrors.categoryId)} />
+            </Field>
+            <Field label="Detalle" htmlFor="subcategoryId" error={fieldErrors.subcategoryId}>
+              <Select id="subcategoryId" value={values.subcategoryId} onChange={(e) => set("subcategoryId", e.target.value)} placeholder={values.categoryId ? "Sin detalle" : "Primero elige el capítulo"} options={subcategories.map((s) => ({ value: s.id, label: s.name }))} disabled={busy || !values.categoryId || subcategories.length === 0} />
             </Field>
           </CardContent>
         </Card>
@@ -276,6 +368,9 @@ export function DocumentForm({ mode, tree, documentTypes, areas, tagSuggestions,
             </Field>
             <Field label="Próxima revisión" htmlFor="reviewDate" error={fieldErrors.reviewDate} hint="Base para futuros recordatorios de vencimiento.">
               <Input id="reviewDate" type="date" value={values.reviewDate} onChange={(e) => set("reviewDate", e.target.value)} disabled={busy} />
+            </Field>
+            <Field label="Retención" htmlFor="retention" error={fieldErrors.retention} hint="Cuánto se conserva. Ej.: 3 años, Permanente.">
+              <Input id="retention" value={values.retention} onChange={(e) => set("retention", e.target.value)} placeholder="Permanente" disabled={busy} />
             </Field>
           </CardContent>
         </Card>

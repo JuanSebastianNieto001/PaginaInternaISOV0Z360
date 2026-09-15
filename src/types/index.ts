@@ -1,6 +1,6 @@
-import type { DocumentStatus, Json, Tables } from "@/lib/supabase/database.types";
+import type { DocumentStatus, InfoClassification, Json, Tables } from "@/lib/supabase/database.types";
 
-export type { DocumentStatus, Json };
+export type { DocumentStatus, InfoClassification, Json };
 
 /* ----------------------------------------------------------------------------
  * Filas base
@@ -14,6 +14,7 @@ export type Category = Tables<"categories">;
 export type Subcategory = Tables<"subcategories">;
 export type DocumentType = Tables<"document_types">;
 export type Area = Tables<"areas">;
+export type Process = Tables<"processes">;
 export type DocumentRow = Tables<"documents">;
 export type DocumentVersion = Tables<"document_versions">;
 export type Tag = Tables<"tags">;
@@ -89,6 +90,11 @@ export interface DocumentListItem {
   subcategory: Pick<Subcategory, "id" | "code" | "name"> | null;
   document_type: Pick<DocumentType, "id" | "code" | "name"> | null;
   area: Pick<Area, "id" | "code" | "name"> | null;
+  process: Pick<Process, "id" | "code" | "name"> | null;
+  classification: InfoClassification;
+  retention: string | null;
+  /** Todas las normas que aplican al documento, incluida la principal. */
+  standards: Pick<Standard, "id" | "code" | "name" | "color">[];
   creator: ProfileSummary | null;
   updater: ProfileSummary | null;
   tags: TagSummary[];
@@ -96,10 +102,11 @@ export interface DocumentListItem {
 
 export interface DocumentDetail extends DocumentListItem {
   standard_id: string;
-  category_id: string;
+  category_id: string | null;
   subcategory_id: string | null;
   document_type_id: string;
   area_id: string | null;
+  process_id: string | null;
   file_path: string;
   approved_at: string | null;
   effective_date: string | null;
@@ -152,6 +159,8 @@ export interface DocumentFilters {
   subcategoryId?: string;
   documentTypeId?: string;
   areaId?: string;
+  processId?: string;
+  classification?: InfoClassification;
   status?: DocumentStatus;
   version?: string;
   dateFrom?: string;
@@ -209,6 +218,7 @@ export interface DashboardStats {
   total: number;
   draft: number;
   review: number;
+  pending_approval: number;
   approved: number;
   obsolete: number;
   by_standard: StandardStat[];

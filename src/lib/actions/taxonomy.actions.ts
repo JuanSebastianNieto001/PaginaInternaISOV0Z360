@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils/slug";
 import {
   areaSchema,
+  processSchema,
   categorySchema,
   deleteByIdSchema,
   documentTypeSchema,
@@ -24,6 +25,7 @@ function revalidateTaxonomy() {
   revalidatePath("/admin/categories");
   revalidatePath("/admin/tags");
   revalidatePath("/admin/areas");
+  revalidatePath("/admin/processes");
   revalidatePath("/standards");
   revalidatePath("/documents");
   revalidatePath("/dashboard");
@@ -289,6 +291,58 @@ export async function deleteArea(input: { id: string }): Promise<ActionResult<{ 
     }
 
     const { error } = await supabase.from("areas").delete().eq("id", parsed.data.id);
+    if (error) throw error;
+
+    revalidateTaxonomy();
+    return ok({ id: parsed.data.id });
+  });
+}
+
+/* ----------------------------------------------------------------------------
+ * Procesos del SGI
+ * ------------------------------------------------------------------------- */
+export async function upsertProcess(input: z.input<typeof processSchema>): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    await authorize(PERMISSIONS.CATEGORIES_MANAGE);
+    const parsed = processSchema.safeParse(input);
+    if (!parsed.success) return zodFail(parsed.error);
+    const d = parsed.data;
+
+    const supabase = await createClient();
+    const payload = {
+      code: d.code,
+      name: d.name,
+      description: d.description || null,
+      active: d.active,
+      sort_order: d.sortOrder,
+    };
+
+    const { data, error } = d.id
+      ? await supabase.from("processes").update(payload).eq("id", d.id).select("id").single()
+      : await supabase.from("processes").insert(payload).select("id").single();
+    if (error) throw error;
+
+    revalidateTaxonomy();
+    return ok({ id: data.id });
+  });
+}
+
+export async function deleteProcess(input: { id: string }): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    await authorize(PERMISSIONS.CATEGORIES_MANAGE);
+    const parsed = deleteByIdSchema.safeParse(input);
+    if (!parsed.success) return zodFail(parsed.error);
+
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from("documents")
+      .select("id", { count: "exact", head: true })
+      .eq("process_id", parsed.data.id);
+    if ((count ?? 0) > 0) {
+      return fail("No se puede eliminar: hay documentos en este proceso. Desactívalo en su lugar.");
+    }
+
+    const { error } = await supabase.from("processes").delete().eq("id", parsed.data.id);
     if (error) throw error;
 
     revalidateTaxonomy();

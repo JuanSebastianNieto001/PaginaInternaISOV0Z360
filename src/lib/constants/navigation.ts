@@ -15,6 +15,7 @@ import {
   Star,
   Tags,
   Users,
+  Workflow,
 } from "lucide-react";
 
 import type { PermissionCode } from "@/types";
@@ -63,6 +64,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/roles", label: "Roles y permisos", icon: Shield, anyPermission: [PERMISSIONS.ROLES_MANAGE] },
   { href: "/admin/standards", label: "Normas", icon: BookMarked, anyPermission: [PERMISSIONS.STANDARDS_MANAGE] },
   { href: "/admin/categories", label: "Categorías", icon: Layers, anyPermission: [PERMISSIONS.CATEGORIES_MANAGE] },
+  { href: "/admin/processes", label: "Procesos del SGI", icon: Workflow, anyPermission: [PERMISSIONS.CATEGORIES_MANAGE] },
   { href: "/admin/areas", label: "Áreas responsables", icon: Building2, anyPermission: [PERMISSIONS.CATEGORIES_MANAGE] },
   { href: "/admin/tags", label: "Etiquetas y tipos", icon: Tags, anyPermission: [PERMISSIONS.CATEGORIES_MANAGE] },
   { href: "/admin/documents", label: "Documentos", icon: FolderKanban, anyPermission: [PERMISSIONS.DOCUMENTS_UPDATE, PERMISSIONS.DOCUMENTS_DELETE] },

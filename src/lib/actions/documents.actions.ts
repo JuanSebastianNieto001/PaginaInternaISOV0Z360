@@ -34,6 +34,31 @@ function revalidateDocumentPaths(id?: string) {
   if (id) revalidatePath(`/documents/${id}`);
 }
 
+/**
+ * Deja en `document_standards` exactamente las normas recibidas. La primera de
+ * la lista es además la norma principal del documento.
+ */
+async function setDocumentStandards(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  documentId: string,
+  standardIds: string[],
+) {
+  const { error: deleteError } = await supabase
+    .from("document_standards")
+    .delete()
+    .eq("document_id", documentId)
+    .not("standard_id", "in", `(${standardIds.join(",")})`);
+  if (deleteError) throw deleteError;
+
+  const { error: insertError } = await supabase
+    .from("document_standards")
+    .upsert(
+      standardIds.map((standard_id) => ({ document_id: documentId, standard_id })),
+      { onConflict: "document_id,standard_id", ignoreDuplicates: true },
+    );
+  if (insertError) throw insertError;
+}
+
 async function assertFileAllowed(
   supabase: Awaited<ReturnType<typeof createClient>>,
   file: { extension: string; size: number },
@@ -71,11 +96,14 @@ export async function createDocument(input: CreateDocumentInput): Promise<Action
         code: d.code.trim().toUpperCase(),
         name: d.name,
         description: d.description || null,
-        standard_id: d.standardId,
-        category_id: d.categoryId,
+        standard_id: d.standardIds[0] as string,
+        category_id: d.categoryId || null,
         subcategory_id: d.subcategoryId || null,
         document_type_id: d.documentTypeId,
         area_id: d.areaId || null,
+        process_id: d.processId,
+        classification: d.classification,
+        retention: d.retention || null,
         status: d.status,
         version: d.version,
         file_path: d.file.path,
@@ -104,6 +132,8 @@ export async function createDocument(input: CreateDocumentInput): Promise<Action
         created_by: user.id,
       });
       if (versionError) throw versionError;
+
+      await setDocumentStandards(supabase, d.id, d.standardIds);
 
       if (d.tags.length > 0) {
         const tags = await ensureTags(supabase, d.tags, user.id);
@@ -159,11 +189,14 @@ export async function updateDocument(input: UpdateDocumentInput): Promise<Action
         code: d.code.trim().toUpperCase(),
         name: d.name,
         description: d.description || null,
-        standard_id: d.standardId,
-        category_id: d.categoryId,
+        standard_id: d.standardIds[0] as string,
+        category_id: d.categoryId || null,
         subcategory_id: d.subcategoryId || null,
         document_type_id: d.documentTypeId,
         area_id: d.areaId || null,
+        process_id: d.processId,
+        classification: d.classification,
+        retention: d.retention || null,
         status: d.status,
         version: d.version,
         approved_at: approvedAt,
@@ -182,6 +215,8 @@ export async function updateDocument(input: UpdateDocumentInput): Promise<Action
         .eq("document_id", d.id)
         .eq("version", current.version);
     }
+
+    await setDocumentStandards(supabase, d.id, d.standardIds);
 
     const tags = await ensureTags(supabase, d.tags, user.id);
     await setDocumentTags(

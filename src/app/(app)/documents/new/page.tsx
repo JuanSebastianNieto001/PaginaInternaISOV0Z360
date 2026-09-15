@@ -47,6 +47,7 @@ export default async function NewDocumentPage() {
           tree={options.tree}
           documentTypes={options.documentTypes}
           areas={options.areas}
+          processes={options.processes}
           tagSuggestions={tags.map((t) => t.name)}
           settings={{
             maxFileSizeMb: settings.max_file_size_mb,

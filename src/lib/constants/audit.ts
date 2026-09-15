@@ -18,6 +18,7 @@ import {
   UserCog,
   UserPlus,
   UserX,
+  Workflow,
 } from "lucide-react";
 
 export const AUDIT_ACTIONS = {
@@ -40,6 +41,9 @@ export const AUDIT_ACTIONS = {
   STANDARD_CREATED: "standard.created",
   STANDARD_UPDATED: "standard.updated",
   STANDARD_DELETED: "standard.deleted",
+  PROCESS_CREATED: "process.created",
+  PROCESS_UPDATED: "process.updated",
+  PROCESS_DELETED: "process.deleted",
   AREA_CREATED: "area.created",
   AREA_UPDATED: "area.updated",
   AREA_DELETED: "area.deleted",
@@ -81,6 +85,9 @@ const PRESENTATION: Record<string, AuditPresentation> = {
   "standard.created": { label: "Creó la norma", icon: BookMarked, tone: "success" },
   "standard.updated": { label: "Actualizó la norma", icon: BookMarked, tone: "info" },
   "standard.deleted": { label: "Eliminó la norma", icon: BookMarked, tone: "danger" },
+  "process.created": { label: "Creó el proceso", icon: Workflow, tone: "success" },
+  "process.updated": { label: "Actualizó el proceso", icon: Workflow, tone: "info" },
+  "process.deleted": { label: "Eliminó el proceso", icon: Workflow, tone: "danger" },
   "area.created": { label: "Creó el área", icon: Building2, tone: "success" },
   "area.updated": { label: "Actualizó el área", icon: Building2, tone: "info" },
   "area.deleted": { label: "Eliminó el área", icon: Building2, tone: "danger" },

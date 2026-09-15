@@ -68,7 +68,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
 
       <div className="space-y-4">
         <Suspense>
-          <DocumentFilters tree={options.tree} documentTypes={options.documentTypes} areas={options.areas} tags={tags} authors={authors} versions={versions} query={query} basePath="/admin/documents" />
+          <DocumentFilters tree={options.tree} documentTypes={options.documentTypes} areas={options.areas} processes={options.processes} tags={tags} authors={authors} versions={versions} query={query} basePath="/admin/documents" />
         </Suspense>
         <p className="text-sm text-fg-muted"><span className="font-medium text-fg">{formatNumber(result.total)}</span> documentos</p>
         {result.items.length === 0 ? (
