@@ -35,7 +35,10 @@ export function guessMimeType(fileName: string, fallback = "application/octet-st
   return MIME_BY_EXTENSION[getExtension(fileName)] ?? fallback;
 }
 
-export type PreviewKind = "pdf" | "image" | "text" | "none";
+export type PreviewKind = "pdf" | "image" | "sheet" | "text" | "none";
+
+/** Formatos de hoja de cálculo que la app sabe leer en el navegador. */
+const SHEET_EXTENSIONS = ["xlsx", "csv"];
 
 export function getPreviewKind(extension: string, mimeType?: string | null): PreviewKind {
   const ext = extension.toLowerCase();
@@ -43,7 +46,9 @@ export function getPreviewKind(extension: string, mimeType?: string | null): Pre
   if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext) || mimeType?.startsWith("image/")) {
     return "image";
   }
-  if (["txt", "md", "csv"].includes(ext) || mimeType?.startsWith("text/")) return "text";
+  // Antes que el texto: un CSV se lee mucho mejor como tabla que como texto plano.
+  if (SHEET_EXTENSIONS.includes(ext)) return "sheet";
+  if (["txt", "md"].includes(ext) || mimeType?.startsWith("text/")) return "text";
   return "none";
 }
 
